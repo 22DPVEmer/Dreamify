@@ -27,7 +27,7 @@
       <RouterLink
         v-if="isLoggedIn"
         class="router text-white fs-4 mx-3 text-decoration-none"
-        to="/"
+        to="/dreamboard"
       >
         <div :class="{ 'text-dark': selectedLink === '/' }">Dreamboard</div>
       </RouterLink>

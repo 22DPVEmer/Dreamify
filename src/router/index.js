@@ -34,6 +34,11 @@ const router = createRouter({
       name: "dreams",
       component: () => import("../views/DreamView.vue"),
     },
+    {
+      path: "/dreamboard/:id",
+      name: "dreamboard",
+      component: () => import("../views/Dreamboard.vue"),
+    },
   ],
 });
 

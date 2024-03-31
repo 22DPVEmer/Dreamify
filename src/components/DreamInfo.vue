@@ -77,38 +77,8 @@
                   Add tags
                 </button>
               </div>
-              <div class="d-flex justify-content-between align-items-center">
-                <button
-                  type="button"
-                  class="btn btn-dark"
-                  data-bs-dismiss="modal"
-                >
-                  Cancel
-                </button>
-                <div class="dots">
-                  <span class="dot" :class="{ 'dot-active': currentStep === 1 }"
-                    >.</span
-                  >
-                  <span class="dot" :class="{ 'dot-active': currentStep === 2 }"
-                    >.</span
-                  >
-                </div>
-
-                <button
-                  type="submit"
-                  class="btn btn-dark"
-                  :disabled="!isStepValid"
-                  @click="nextStep"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-            <div v-else-if="currentStep === 2">
-              <!-- Step 2: Dream type -->
-
               <div class="mb-3 text-dark text-center">
-                <label for="dreamType" class="form-label text-white fs-3">
+                <label for="dreamType" class="form-label text-white fs-4">
                   What type of dream did you have?
                 </label>
                 <div class="d-flex justify-content-center">
@@ -133,21 +103,15 @@
                 <button
                   type="button"
                   class="btn btn-dark"
-                  @click="previousStep"
+                  data-bs-dismiss="modal"
                 >
-                  Back
+                  Cancel
                 </button>
-                <div class="dots">
-                  <span class="dot" :class="{ 'dot-active': currentStep === 1 }"
-                    >.</span
-                  >
-                  <span class="dot" :class="{ 'dot-active': currentStep === 2 }"
-                    >.</span
-                  >
-                </div>
+
                 <button
                   type="submit"
                   class="btn btn-dark"
+                  :disabled="!isStepValid"
                   data-bs-dismiss="modal"
                 >
                   Submit

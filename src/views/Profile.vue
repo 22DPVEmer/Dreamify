@@ -25,6 +25,13 @@
                   class="text-info ms-2"
                 />
               </router-link>
+              <router-link
+                :to="{ name: 'dreamboard', params: { id: dream.id } }"
+              >
+                <font-awesome-icon
+                  :icon="['fas', 'share']"
+                  class="text-info ml-5"
+              /></router-link>
             </h5>
             <p class="card-text">{{ dream.description }}</p>
             <p class="card-text">
@@ -48,6 +55,7 @@
 import { ref, onMounted } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
+import router from "@/router";
 
 const user = ref(null);
 const dreams = ref([]); // Create a ref to hold the dreams
