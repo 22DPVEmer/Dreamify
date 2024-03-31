@@ -22,10 +22,7 @@
             start dreaming!
           </p>
           <RouterLink class="router" to="/signup">
-            <div
-              class="nav-item user fs-5"
-              :class="{ selected: selectedLink === '/signup' }"
-            >
+            <div class="nav-item user fs-5">
               <button type="button" class="btn btn-outline-info btn-lg">
                 Sign Up
               </button>

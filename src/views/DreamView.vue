@@ -1,5 +1,5 @@
 <template>
-  <div class="container mt-4">
+  <div class="container mt-5" style="padding-top: 100px">
     <div v-if="dream">
       <div class="card mb-3">
         <div class="card-body">
@@ -40,14 +40,17 @@
 //New File, doesnt work
 import { ref, onMounted, computed } from "vue";
 import axios from "axios";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+
 import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
 /*onMounted(async () => {
   const token = localStorage.getItem("token");
   const decodedToken = jwtDecode(token); // decode without verification
   const userId = decodedToken.userId;
 */
+
 const route = useRoute();
+const router = useRouter();
 const dreamId = route.params.id;
 console.log("The dream id is:", dreamId);
 const dream = ref(null);
@@ -55,6 +58,7 @@ const editing = ref(false);
 let editedTitle = ref("");
 let editedDescription = ref("");
 
+//this works
 onMounted(async () => {
   try {
     const response = await axios.get(
@@ -77,13 +81,14 @@ const toggleEdit = () => {
 };
 
 const saveChanges = async () => {
+  const requestBody = {
+    title: editedTitle.value, // Access the actual value of the 'title' reactive property
+    description: editedDescription.value, // Access the actual value of the 'description' reactive property
+  };
+
   try {
-    await axios.put(`http://localhost:8081/api/dreams/${dreamId}`, {
-      title: editedTitle,
-      description: editedDescription,
-    });
-    dream.value.title = editedTitle;
-    dream.value.description = editedDescription;
+    await axios.put(`http://localhost:8081/api/dreams/${dreamId}`, requestBody);
+
     editing.value = false;
   } catch (error) {
     console.error(error);
@@ -94,6 +99,7 @@ const deleteDream = async () => {
   try {
     await axios.delete(`http://localhost:8081/api/dreams/${dreamId}`);
     // Navigate to dream list or perform any other action after successful deletion
+    router.push({ name: "profile" });
   } catch (error) {
     console.error(error);
   }

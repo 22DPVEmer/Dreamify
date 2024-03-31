@@ -61,8 +61,12 @@
                 </div>
                 <div class="col-12">
                   <div class="d-grid">
-                    <button class="btn btn-lg btn-neon-blue" type="submit">
-                      Log in now
+                    <button
+                      @click="login"
+                      class="btn btn-lg btn-neon-blue"
+                      type="submit"
+                    >
+                      Login
                     </button>
                   </div>
                 </div>
@@ -142,7 +146,21 @@
   </div>
 </template>
 <script>
+import { ref, computed } from "vue";
+import store from "../store/store.js";
+const isLoggedIn = computed(() => store.state.isLoggedIn);
+
 export default {
+  setup() {
+    const isLoggedIn = ref(false);
+    return {
+      isLoggedIn: isLoggedIn,
+    };
+    function resetToken() {
+      localStorage.removeItem("token");
+    }
+  },
+
   methods: {
     async login() {
       try {
@@ -160,8 +178,7 @@ export default {
         if (response.status === 200) {
           // Store the token in local storage
           localStorage.setItem("token", data.token);
-
-          console.log("Token:", data.token);
+          store.dispatch("login");
 
           // Redirect to user view
           this.$router.push("/user");

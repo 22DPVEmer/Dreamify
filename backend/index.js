@@ -101,64 +101,53 @@ app.get("/api/dreams/:dreamId", async (req, res) => {
 });
 
 //Dream entry update endpoint code
-
 app.put("/api/dreams/:dreamId", async (req, res) => {
-  const token = req.headers.authorization.split(" ")[1];
-  jwt.verify(token, secretKey, (err, decoded) => {
-    if (err) {
-      res.status(401).json({ message: "Unauthorized" });
-    } else {
-      const dreamId = req.params.dreamId;
-      const { title, description } = req.body;
+  
+  const dreamId = req.params.dreamId;
+  console.log(req.body);
+  const { title, description } = req.body;
 
-      // Query the database
-      pool
-        .query(
-          "UPDATE dream_entries SET title = ?, description = ? WHERE id = ?",
-          [title, description, dreamId]
-        )
-        .then(([rows, fields]) => {
-          if (rows.affectedRows > 0) {
-            res.json({ message: "Dream updated successfully" });
-          } else {
-            res.status(404).json({ message: "No dream found with this id" });
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-          res.status(500).json({ message: "Server error" });
-        });
-    }
-  });
+  // Query the database
+  pool
+    .query("UPDATE dream_entries SET title = ?, description = ? WHERE id = ?", [
+      title,
+      description,
+      dreamId,
+    ])
+    .then(([rows, fields]) => {
+      if (rows.affectedRows > 0) {
+        res.json({ message: "Dream updated successfully" });
+      } else {
+        res.status(404).json({ message: "No dream found with this id" });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
 });
 
 //Dream entry delete endpoint code
 
 app.delete("/api/dreams/:dreamId", async (req, res) => {
-  const token = req.headers.authorization.split(" ")[1];
-  jwt.verify(token, secretKey, (err, decoded) => {
-    if (err) {
-      res.status(401).json({ message: "Unauthorized" });
-    } else {
-      const dreamId = req.params.dreamId;
+  const dreamId = req.params.dreamId;
 
-      // Query the database
-      pool
-        .query("DELETE FROM dream_entries WHERE id = ?", [dreamId])
-        .then(([rows, fields]) => {
-          if (rows.affectedRows > 0) {
-            res.json({ message: "Dream deleted successfully" });
-          } else {
-            res.status(404).json({ message: "No dream found with this id" });
-          }
-        })
-        .catch((err) => {
-          console.error(err);
-          res.status(500).json({ message: "Server error" });
-        });
-    }
-  });
+  // Query the database
+  pool
+    .query("DELETE FROM dream_entries WHERE id = ?", [dreamId])
+    .then(([rows, fields]) => {
+      if (rows.affectedRows > 0) {
+        res.json({ message: "Dream deleted successfully" });
+      } else {
+        res.status(404).json({ message: "No dream found with this id" });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
 });
+
 // Connect to the dimport axios from 'axios';atabase
 db.connect((err) => {
   if (err) {

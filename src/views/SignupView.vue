@@ -95,8 +95,10 @@
                 <div
                   class="d-flex gap-2 gap-md-4 flex-column flex-md-row justify-content-md-end"
                 >
-                  <a href="#!" class="link-white text-decoration-none"
-                    >Already have an account?</a
+                  <RouterLink
+                    class="link-white text-decoration-none"
+                    to="/login"
+                    >Already have an account?</RouterLink
                   >
                 </div>
               </div>
@@ -137,7 +139,7 @@ export default {
           },
           body: JSON.stringify(userData),
         });
-        console.log(response);
+
         if (response.ok) {
           alert("Signup successful!");
           // Redirect the user or clear the form here

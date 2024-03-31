@@ -11,38 +11,75 @@
 
     <div class="d-flex justify-content-end mx-3 pe-5">
       <RouterLink
+        v-if="isLoggedIn"
+        to="/user"
+        class="router text-white fs-4 mx-3 text-decoration-none"
+      >
+        <div :class="{ 'text-dark': selectedLink === '/user' }">Journal</div>
+      </RouterLink>
+      <RouterLink
+        v-if="!isLoggedIn"
+        to="/signup"
+        class="router text-white fs-4 mx-3 text-decoration-none"
+      >
+        <div :class="{ 'text-dark': selectedLink === '/signup' }">Sign Up</div>
+      </RouterLink>
+      <RouterLink
+        v-if="isLoggedIn"
         class="router text-white fs-4 mx-3 text-decoration-none"
         to="/"
       >
         <div :class="{ 'text-dark': selectedLink === '/' }">Dreamboard</div>
       </RouterLink>
-      <RouterLink
-        class="router text-white fs-4 mx-3 text-decoration-none"
-        to="/login"
-      >
-        <div :class="{ 'text-dark': selectedLink === '/login' }">Login</div>
-      </RouterLink>
+      <div class="log text-white fs-4 mx-3 text-decoration-none">
+        <div
+          :class="{ 'text-dark': selectedLink === '/login' }"
+          @click="toggleLogin"
+        >
+          {{ isLoggedIn ? "Logout" : "Login" }}
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { useRouter } from "vue-router";
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
+import store from "../store/store.js";
 
 const router = useRouter();
 const selectedLink = ref(router.currentRoute.value.path);
+
+const isLoggedIn = computed(() => store.state.isLoggedIn);
 
 watch(
   () => router.currentRoute.value,
   (newRoute) => {
     selectedLink.value = newRoute.path;
-    console.log(selectedLink.value === "/login");
   }
 );
+const linkTo = computed(() => (isLoggedIn.value ? "/" : "/login"));
+
+const toggleLogin = () => {
+  console.log("isLoggedIn:", isLoggedIn.value);
+  if (isLoggedIn.value) {
+    store.dispatch("logout");
+    console.log("Logging out...");
+    console.log(linkTo.value);
+    router.push("/");
+  } else {
+    console.log("Logging in...");
+    console.log(linkTo.value);
+    router.push("/login");
+  }
+};
 </script>
 
 <style scoped>
+.log {
+  cursor: pointer;
+}
 .navbar {
   /* Apply linear gradient background */
   background: rgb(4, 0, 36);
