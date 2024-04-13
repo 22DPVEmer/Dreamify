@@ -15,18 +15,27 @@
       </div>
       <div v-if="dreams.length" class="mt-3">
         <h2 class="text-white">Dreams:</h2>
-        <div v-for="dream in dreams" :key="dream.id" class="card mt-2">
+        <div
+          v-for="dream in dreams"
+          :key="dream.id"
+          class="card mt-2"
+          @click="selectDream(dream.id)"
+        >
           <div class="card-body">
             <h5 class="card-title">
               {{ dream.title
-              }}<router-link :to="{ name: 'dreams', params: { id: dream.id } }">
+              }}<router-link
+                :to="{ name: 'dreams' }"
+                @click.stop="selectDream(dream.id)"
+              >
                 <font-awesome-icon
                   :icon="['fas', 'pen-to-square']"
                   class="text-info ms-2"
                 />
               </router-link>
               <router-link
-                :to="{ name: 'dreamboard', params: { id: dream.id } }"
+                :to="{ name: 'dreamboard' }"
+                @click.stop="selectDream(dream.id)"
               >
                 <font-awesome-icon
                   :icon="['fas', 'share']"
@@ -56,10 +65,28 @@ import { ref, onMounted } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
 import router from "@/router";
+import store from "../store/store.js";
+/* 
 
+
+
+
+get back to this later
+
+nav veel github so safe
+
+
+
+
+*/
 const user = ref(null);
 const dreams = ref([]); // Create a ref to hold the dreams
 const loading = ref(true); // Create a ref to hold the loading state
+
+const selectDream = (id) => {
+  store.commit("setSelectedDreamId", id);
+  router.push({ name: "DreamView" });
+};
 
 onMounted(async () => {
   const token = localStorage.getItem("token");

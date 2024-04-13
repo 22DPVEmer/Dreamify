@@ -30,12 +30,12 @@ const router = createRouter({
       component: () => import("../views/Profile.vue"),
     },
     {
-      path: "/dreams/:id",
+      path: "/dreams",
       name: "dreams",
       component: () => import("../views/DreamView.vue"),
     },
     {
-      path: "/dreamboard/:id",
+      path: "/dreamboard",
       name: "dreamboard",
       component: () => import("../views/Dreamboard.vue"),
     },

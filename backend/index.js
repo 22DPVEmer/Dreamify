@@ -102,7 +102,6 @@ app.get("/api/dreams/:dreamId", async (req, res) => {
 
 //Dream entry update endpoint code
 app.put("/api/dreams/:dreamId", async (req, res) => {
-  
   const dreamId = req.params.dreamId;
   console.log(req.body);
   const { title, description } = req.body;
@@ -262,6 +261,7 @@ const jwt = require("jsonwebtoken");
 // Function to generate JWT token
 function generateToken(user) {
   const token = jwt.sign({ userId: user.id }, secretKey, { expiresIn: "1h" });
+
   return token;
 }
 
@@ -274,4 +274,25 @@ function generateSecretKey() {
 const secretKey = generateSecretKey();
 console.log("Generated Secret Key:", secretKey);
 
-// Login token
+// Code for dreamboard
+
+app.post("/api/create-shared-dreams-table", async (req, res) => {
+  // Query the database
+  pool
+    .query(
+      `
+      CREATE TABLE shared_dreams (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        dream_id INT,
+        FOREIGN KEY (dream_id) REFERENCES dream_entries(id)
+      )
+    `
+    )
+    .then(([rows, fields]) => {
+      res.json({ message: "Shared dreams table created successfully" });
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});

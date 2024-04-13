@@ -11,6 +11,17 @@
             <button class="btn btn-sm btn-primary ms-2" @click="toggleEdit">
               {{ editing ? "Save" : "Edit" }}
             </button>
+            <button>
+              <router-link
+                :to="{ name: 'dreamboard' }"
+                @click.stop="selectDream(dream.id)"
+              >
+                <font-awesome-icon
+                  :icon="['fas', 'share']"
+                  class="text-info ml-5"
+                />
+              </router-link>
+            </button>
           </h5>
           <p class="card-text">
             <span v-if="editing">
@@ -41,6 +52,7 @@
 import { ref, onMounted, computed } from "vue";
 import axios from "axios";
 import { useRoute, useRouter } from "vue-router";
+import store from "../store/store.js";
 
 import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
 /*onMounted(async () => {
@@ -51,7 +63,9 @@ import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
 
 const route = useRoute();
 const router = useRouter();
-const dreamId = route.params.id;
+
+const dreamId = store.state.selectedDreamId; // shis fakin works
+//const dreamId = route.params.id;
 console.log("The dream id is:", dreamId);
 const dream = ref(null);
 const editing = ref(false);
