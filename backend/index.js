@@ -206,7 +206,51 @@ app.post("/signup", (req, res) => {
   });
 });
 
-//
+//Shared dreams creation code
+app.post("/api/dreams/:dreamId/share", async (req, res) => {
+  const dreamId = req.params.dreamId;
+  const date = new Date().toISOString().slice(0, 19).replace("T", " "); // Get current date in MySQL datetime format
+
+  // Query the database
+  pool
+    .query("INSERT IGNORE INTO shared_dreams (Dream_id, date) VALUES (?, ?)", [
+      dreamId,
+      date,
+    ])
+    .then(([rows, fields]) => {
+      if (rows.affectedRows === 0) {
+        res.status(409).json({ message: "Dream already shared" });
+      } else {
+        res.json({ message: "Dream shared successfully" });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+
+// Shared dreams access code
+app.get("/api/shared-dreams", async (req, res) => {
+  // Query the database
+  pool
+    .query(
+      `
+      SELECT shared_dreams.*, dream_entries.title, dream_entries.description 
+      FROM shared_dreams 
+      INNER JOIN dream_entries ON shared_dreams.Dream_id = dream_entries.id
+    `
+    )
+    .then(([rows, fields]) => {
+      console.log(rows);
+      res.json(rows);
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+
 // User Login
 
 app.post("/login", (req, res) => {

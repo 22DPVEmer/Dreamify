@@ -11,16 +11,8 @@
             <button class="btn btn-sm btn-primary ms-2" @click="toggleEdit">
               {{ editing ? "Save" : "Edit" }}
             </button>
-            <button>
-              <router-link
-                :to="{ name: 'dreamboard' }"
-                @click.stop="selectDream(dream.id)"
-              >
-                <font-awesome-icon
-                  :icon="['fas', 'share']"
-                  class="text-info ml-5"
-                />
-              </router-link>
+            <button class="btn btn-sm btn-info ms-2" @click="shareDream">
+              Share
             </button>
           </h5>
           <p class="card-text">
@@ -55,11 +47,6 @@ import { useRoute, useRouter } from "vue-router";
 import store from "../store/store.js";
 
 import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
-/*onMounted(async () => {
-  const token = localStorage.getItem("token");
-  const decodedToken = jwtDecode(token); // decode without verification
-  const userId = decodedToken.userId;
-*/
 
 const route = useRoute();
 const router = useRouter();
@@ -71,6 +58,28 @@ const dream = ref(null);
 const editing = ref(false);
 let editedTitle = ref("");
 let editedDescription = ref("");
+
+//post request for sharing dream
+
+const shareDream = async () => {
+  console.log("Sharing dream with id:", dreamId);
+  try {
+    const response = await axios.post(
+      `http://localhost:8081/api/dreams/${dreamId}/share`
+    );
+
+    if (response.data.message === "Dream shared successfully") {
+      // Handle successful share (e.g., show a success message)
+      alert("Dream shared successfully!");
+    } else {
+      // Handle unsuccessful share (e.g., show an error message)
+      alert("Failed to share dream.");
+    }
+  } catch (error) {
+    // Handle error (e.g., show an error message)
+    alert("An error occurred while sharing the dream.");
+  }
+};
 
 //this works
 onMounted(async () => {

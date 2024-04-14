@@ -24,19 +24,13 @@
           <div class="card-body">
             <h5 class="card-title">
               {{ dream.title
-              }}<router-link
-                :to="{ name: 'dreams' }"
-                @click.stop="selectDream(dream.id)"
-              >
+              }}<router-link to="/dreams" @click.stop="selectDream(dream.id)">
                 <font-awesome-icon
                   :icon="['fas', 'pen-to-square']"
                   class="text-info ms-2"
                 />
               </router-link>
-              <router-link
-                :to="{ name: 'dreamboard' }"
-                @click.stop="selectDream(dream.id)"
-              >
+              <router-link to="/dreamboard">
                 <font-awesome-icon
                   :icon="['fas', 'share']"
                   class="text-info ml-5"
@@ -85,7 +79,6 @@ const loading = ref(true); // Create a ref to hold the loading state
 
 const selectDream = (id) => {
   store.commit("setSelectedDreamId", id);
-  router.push({ name: "DreamView" });
 };
 
 onMounted(async () => {
@@ -110,6 +103,7 @@ onMounted(async () => {
       }
     );
     dreams.value = dreamsResponse.data; // Assign the dreams to the dreams ref
+    console.log("Dreams:", dreams.value);
   } catch (error) {
     console.error(error);
   } finally {
