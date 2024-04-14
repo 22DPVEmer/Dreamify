@@ -1,6 +1,13 @@
 # Dreamify
 
-This template should help get you started developing with Vue 3 in Vite.
+Whats left to do:
+1.editoshanas vai public vai nav sapnim, var nonemt
+2. Comments sistema, replies sistema
+3.Page par guleshanu
+5. like sistema
+6. filtreshana
+4. dizains 
+
 
 ## Recommended IDE Setup
 
@@ -19,6 +26,7 @@ npm install
 ### Compile and Hot-Reload for Development
 
 ```sh
+cd backend -> npm start
 npm run dev
 ```
 
