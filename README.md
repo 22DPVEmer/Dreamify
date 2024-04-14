@@ -1,12 +1,13 @@
 # Dreamify
 
-Whats left to do:
-1.editoshanas vai public vai nav sapnim, var nonemt
-2. Comments sistema, replies sistema
-3.Page par guleshanu
-5. like sistema
-6. filtreshana
-4. dizains 
+## What's left to do:
+
+1. **Edit:** Whether the dream is public or not, it can be removed.
+2. **Comments System:** Implement a system for comments and replies.
+3. **Page About Dreaming:** Create a page about dreaming.
+4. **Like System:** Implement a system for liking dreams.
+5. **Filtering:** Add functionality to filter dreams.
+6. **Design:** Improve the design of the application.
 
 
 ## Recommended IDE Setup
