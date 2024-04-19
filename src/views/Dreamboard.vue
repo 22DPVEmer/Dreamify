@@ -12,17 +12,34 @@
       <div class="card-body">
         <h2 class="card-title text-white">{{ dream.title }}</h2>
         <p class="card-text text-white">{{ dream.description }}</p>
-        <p class="card-text text-white">{{ dream.Date }}</p>
+        <p class="card-text text-white">
+          {{ new Date(dream.Date).toLocaleDateString() }}
+        </p>
         <div>
-          <button>
-            <font-awesome-icon :icon="['fas', 'thumbs-up']" />
-          </button>
-          <button>
-            <font-awesome-icon :icon="['fas', 'thumbs-down']" />
-          </button>
-          <button>
-            <font-awesome-icon :icon="['fas', 'comment']" />
-          </button>
+          <div class="d-flex align-items-center">
+            <button class="btn" @click="increaseLikes(dream)">
+              <font-awesome-icon
+                :icon="['fas', 'thumbs-up']"
+                style="color: white"
+              />
+            </button>
+            <div class="text-white">
+              {{ dream.Likes === null ? 0 : dream.Likes }}
+            </div>
+
+            <button class="btn" @click="decreaseLikes(dream)">
+              <font-awesome-icon
+                :icon="['fas', 'thumbs-down']"
+                style="color: white"
+              />
+            </button>
+            <button class="btn">
+              <font-awesome-icon
+                :icon="['fas', 'comment']"
+                style="color: white"
+              />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -32,10 +49,14 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import axios from "axios";
+import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
 
 const sharedDreams = ref([]);
 const loading = ref(true);
-
+//for the token so that the user can like the dream
+const token = localStorage.getItem("token");
+const decodedToken = jwtDecode(token); // decode without verification
+const userId = decodedToken.userId;
 onMounted(async () => {
   try {
     const response = await axios.get("http://localhost:8081/api/shared-dreams");
@@ -51,6 +72,41 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+const increaseLikes = async (dream) => {
+  // Increase the likes count in the local data
+
+  // Call your API to increase the likes count for this dream
+  await updateLikes(dream);
+  dream.Likes++;
+};
+
+const decreaseLikes = async (dream) => {
+  // Decrease the likes count in the local data, but not below zero
+  if (dream.Likes > 0) {
+    dream.Likes--;
+
+    // Call your API to decrease the likes count for this dream
+    await updateLikes(dream);
+  }
+};
+
+const updateLikes = async (dream) => {
+  // Call your API to update the likes count for this dream
+  // You'll need to replace this with your actual API call
+  try {
+    axios.interceptors.request.use(function (config) {
+      const token = localStorage.getItem("token");
+      config.headers.Authorization = token ? `Bearer ${token}` : "";
+      return config;
+    });
+    await axios.post(
+      `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/like`
+    );
+  } catch (error) {
+    console.error("Error updating likes:", error);
+  }
+};
 </script>
 
 <style scoped></style>
