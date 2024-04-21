@@ -26,7 +26,7 @@
               />
             </button>
             <div class="text-white">
-              {{ dream.Likes === null ? 0 : dream.Likes }}
+              {{ dream.Likes }}
             </div>
 
             <button class="btn" @click="decreaseLikes(dream)">
@@ -82,16 +82,10 @@ onMounted(async () => {
           );
           if (response.data.likeStatus === "liked") {
             dream.likeStatus = "liked";
-            console.log(dream.likeStatus);
-            console.log("User has liked dream:", dream.Id);
           } else if (response.data.likeStatus === "disliked") {
             dream.likeStatus = "disliked";
-            console.log(dream.likeStatus);
-            console.log("User has disliked dream:", dream.Id);
           } else {
             dream.likeStatus = "neutral";
-            console.log(dream.likeStatus);
-            console.log("User has not liked dream:", dream.Id);
           }
         } catch (error) {
           console.error(error);
@@ -107,56 +101,93 @@ onMounted(async () => {
   }
 });
 // Increase the likes count for the dream
+/*
 const increaseLikes = async (dream) => {
+  console.log("increaseLikes called with dream:", dream);
   try {
     if (dream.likeStatus === "liked") {
-      // If the dream is already liked, then unlike it
+      console.log("Dream is already liked. Unliking...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/unlike`
       );
       dream.Likes--;
       dream.likeStatus = "neutral";
     } else {
-      // If the dream is not liked, then like it
+      console.log("Dream is not liked. Liking...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/like`
       );
       dream.Likes++;
       dream.likeStatus = "liked";
       if (dream.likeStatus === "disliked") {
-        // If the dream was disliked, then increase the likes count again
+        console.log("Dream was disliked. Increasing likes count again...");
         dream.Likes++;
       }
     }
+    console.log("Final dream state:", dream);
+  } catch (error) {
+    console.error("Error checking likes:", error);
+  }
+};*/
+const increaseLikes = async (dream) => {
+  console.log("increaseLikes called with dream:", dream);
+  try {
+    if (dream.likeStatus === "liked") {
+      console.log("Dream is already liked. Unliking...");
+      await axios.post(
+        `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/unlike`
+      );
+      dream.Likes--;
+      dream.likeStatus = "neutral";
+    } else if (dream.likeStatus === "disliked") {
+      console.log("Dream was disliked. Liking from dislike...");
+      await axios.post(
+        `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/likeFromDislike`
+      );
+      dream.Likes += 2;
+      dream.likeStatus = "liked";
+    } else {
+      console.log("Dream is not liked. Liking...");
+      await axios.post(
+        `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/like`
+      );
+      dream.Likes++;
+      dream.likeStatus = "liked";
+    }
+    console.log("Final dream state:", dream);
   } catch (error) {
     console.error("Error checking likes:", error);
   }
 };
 // code for decreasing the likes
 const decreaseLikes = async (dream) => {
+  console.log("decreaseLikes called with dream:", dream);
   try {
-    // Check if the user has already disliked this dream
-    const response = await axios.post(
-      `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/dislike`
-    );
-
-    if (response.data.message === "You have already disliked this dream") {
-      // The user has already disliked this dream, so can't dislike again
-      console.log("You have already disliked this dream");
-    } else if (response.data.message === "Dream disliked successfully") {
-      // The user has not disliked this dream yet, so the dislike was successful
-      if (dream.Likes > 0) {
-        dream.Likes--;
-      }
-      console.log("Dream disliked successfully");
-    } else {
-      // The user has not liked this dream yet, so just added the dislike
-      console.log(
-        "You haven't liked this dream yet, but it was disliked successfully"
+    if (dream.likeStatus === "disliked") {
+      console.log("Dream is already disliked. Undisliking...");
+      await axios.post(
+        `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/undislike`
       );
+      dream.Likes++;
+      dream.likeStatus = "neutral";
+    } else if (dream.likeStatus === "liked") {
+      console.log("Dream was liked. Disliking from like...");
+      await axios.post(
+        `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/dislikeFromLike`
+      );
+      dream.Likes -= 2;
+      dream.likeStatus = "disliked";
+    } else {
+      console.log("Dream is not disliked. Disliking...");
+      await axios.post(
+        `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/dislike`
+      );
+      dream.Likes--;
+      dream.likeStatus = "disliked";
     }
+    console.log("Final dream state:", dream);
   } catch (error) {
-    console.error("Error disliking dream:", error);
+    console.error("Error checking dislikes:", error);
   }
 };
 </script>
