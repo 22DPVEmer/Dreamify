@@ -341,51 +341,247 @@ app.post("/api/create-shared-dreams-table", async (req, res) => {
     });
 });
 
-// Code for dreamboard like endpoint
-
-app.post("/api/shared-dreams/:id/:userid/like", async (req, res) => {
+// code for unlike
+app.post("/api/shared-dreams/:id/:userid/unlike", async (req, res) => {
   const dreamId = req.params.id;
-
   const userId = req.params.userid;
-  console.log(userId);
-
-  console.log(userId);
 
   // Check if the user has already liked this dream
   pool
-    .query(
-      `
-      SELECT * FROM dream_likes WHERE UserId = ? AND DreamId = ?
-    `,
-      [userId, dreamId]
-    )
+    .query(`SELECT * FROM dream_likes WHERE UserId = ? AND DreamId = ?`, [
+      userId,
+      dreamId,
+    ])
     .then(([rows, fields]) => {
-      if (rows.length > 0) {
-        // The user has already liked this dream
-        res.status(400).json({ message: "You have already liked this dream" });
-      } else {
-        // The user has not liked this dream yet, so add a like
-
-        pool // Increment the like count in the shared_dreams table if not null
-          .query(
-            `
-            UPDATE shared_dreams SET Likes = Likes + 1 WHERE Id = ? 
-          `,
-            [dreamId]
-          )
+      if (rows.length > 0 && !rows[0].disliked) {
+        // The user has liked this dream, so remove the like
+        pool
+          .query(`UPDATE shared_dreams SET Likes = Likes - 1 WHERE Id = ?`, [
+            dreamId,
+          ])
           .then(([rows, fields]) => {
-            // Add a row to the likes table
             pool
               .query(
-                `
-                INSERT INTO dream_likes (UserId, DreamId) VALUES (?, ?)
-              `,
+                `DELETE FROM dream_likes WHERE UserId = ? AND DreamId = ?`,
+                [userId, dreamId]
+              )
+              .then(([rows, fields]) => {
+                res.json({ message: "Dream unliked successfully" });
+              });
+          });
+      } else {
+        // The user has not liked this dream
+        res.status(400).json({ message: "You have not liked this dream" });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+// Code for dreamboard like addition endpoint
+
+app.post("/api/shared-dreams/:id/:userid/like", async (req, res) => {
+  const dreamId = req.params.id;
+  const userId = req.params.userid;
+
+  // Check if the user has already liked or disliked this dream
+  pool
+    .query(`SELECT * FROM dream_likes WHERE UserId = ? AND DreamId = ?`, [
+      userId,
+      dreamId,
+    ])
+    .then(([rows, fields]) => {
+      if (rows.length > 0) {
+        // The user has already liked or disliked this dream
+        if (rows[0].disliked) {
+          // The user has disliked this dream, so change it to a like
+          pool
+            .query(`UPDATE shared_dreams SET Likes = Likes + 1 WHERE Id = ?`, [
+              dreamId,
+            ])
+            .then(([rows, fields]) => {
+              pool
+                .query(
+                  `UPDATE dream_likes SET disliked = FALSE WHERE UserId = ? AND DreamId = ?`,
+                  [userId, dreamId]
+                )
+                .then(([rows, fields]) => {
+                  res.json({ message: "Dream liked successfully" });
+                });
+            });
+        } else {
+          // The user has already liked this dream
+          res
+            .status(400)
+            .json({ message: "You have already liked this dream" });
+        }
+      } else {
+        // The user has not liked or disliked this dream yet, so add a like
+        pool
+          .query(`UPDATE shared_dreams SET Likes = Likes + 1 WHERE Id = ?`, [
+            dreamId,
+          ])
+          .then(([rows, fields]) => {
+            pool
+              .query(
+                `INSERT INTO dream_likes (UserId, DreamId, disliked) VALUES (?, ?, FALSE)`,
                 [userId, dreamId]
               )
               .then(([rows, fields]) => {
                 res.json({ message: "Dream liked successfully" });
               });
           });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+// Code for dreamboard like/dislike status check endpoint
+app.get("/api/shared-dreams/:id/:userid/likeStatus", async (req, res) => {
+  const dreamId = req.params.id;
+  const userId = req.params.userid;
+
+  // Check if the user has liked or disliked this dream
+  pool
+    .query(`SELECT * FROM dream_likes WHERE UserId = ? AND DreamId = ? `, [
+      userId,
+      dreamId,
+    ])
+    .then(([rows, fields]) => {
+      if (rows.length > 0) {
+        if (rows[0].disliked) {
+          // The user has disliked this dream
+          res.json({ likeStatus: "disliked" });
+        } else {
+          // The user has liked this dream
+          res.json({ likeStatus: "liked" });
+        }
+      } else {
+        // The user has not liked or disliked this dream
+        res.json({ likeStatus: "neutral" });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+
+// Code for dreamboard like removal endpoint
+app.post("/api/shared-dreams/:id/:userid/dislike", async (req, res) => {
+  const dreamId = req.params.id;
+  const userId = req.params.userid;
+
+  // Check if the user has already disliked this dream
+  pool
+    .query(
+      `SELECT * FROM dream_likes WHERE UserId = ? AND DreamId = ? AND disliked = TRUE`,
+      [userId, dreamId]
+    )
+    .then(([rows, fields]) => {
+      if (rows.length > 0) {
+        // The user has already disliked this dream, so remove the dislike and delete the user from dream_likes table
+        pool
+          .query(`DELETE FROM dream_likes WHERE UserId = ? AND DreamId = ?`, [
+            userId,
+            dreamId,
+          ])
+          .then(([rows, fields]) => {
+            // Increment the like count in the shared_dreams table
+            pool
+              .query(
+                `UPDATE shared_dreams SET Likes = Likes + 1 WHERE Id = ?`,
+                [dreamId]
+              )
+              .then(([rows, fields]) => {
+                res.json({
+                  message: "Dream undisliked and user removed successfully",
+                });
+              });
+          });
+      } else {
+        // The user has not disliked this dream yet, so proceed
+
+        // Check if the user has liked this dream
+        pool
+          .query(`SELECT * FROM dream_likes WHERE UserId = ? AND DreamId = ?`, [
+            userId,
+            dreamId,
+          ])
+          .then(([rows, fields]) => {
+            if (rows.length > 0) {
+              // The user has liked this dream, so remove the like and add the dislike
+              pool
+                .query(
+                  `UPDATE dream_likes SET disliked = TRUE WHERE UserId = ? AND DreamId = ?`,
+                  [userId, dreamId]
+                )
+                .then(([rows, fields]) => {
+                  // Decrement the like count in the shared_dreams table if not null
+                  pool
+                    .query(
+                      `UPDATE shared_dreams SET Likes = Likes - 1 WHERE Id = ? AND Likes > 0`,
+                      [dreamId]
+                    )
+                    .then(([rows, fields]) => {
+                      res.json({ message: "Dream disliked successfully" });
+                    });
+                });
+            } else {
+              // The user has not liked this dream yet, so just add the dislike
+              pool
+                .query(
+                  `INSERT INTO dream_likes (UserId, DreamId, disliked) VALUES (?, ?, TRUE)`,
+                  [userId, dreamId]
+                )
+                .then(([rows, fields]) => {
+                  res.json({ message: "Dream disliked successfully" });
+                });
+            }
+          });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+// code for undislike
+app.post("/api/shared-dreams/:id/:userid/undislike", async (req, res) => {
+  const dreamId = req.params.id;
+  const userId = req.params.userid;
+
+  // Check if the user has already disliked this dream
+  pool
+    .query(
+      `SELECT * FROM dream_likes WHERE UserId = ? AND DreamId = ? AND disliked = TRUE`,
+      [userId, dreamId]
+    )
+    .then(([rows, fields]) => {
+      if (rows.length > 0) {
+        // The user has disliked this dream, so remove the dislike
+        pool
+          .query(
+            `UPDATE dream_likes SET disliked = FALSE WHERE UserId = ? AND DreamId = ?`,
+            [userId, dreamId]
+          )
+          .then(([rows, fields]) => {
+            // Increment the like count in the shared_dreams table
+            pool
+              .query(
+                `UPDATE shared_dreams SET Likes = Likes + 1 WHERE Id = ?`,
+                [dreamId]
+              )
+              .then(([rows, fields]) => {
+                res.json({ message: "Dream undisliked successfully" });
+              });
+          });
+      } else {
+        // The user has not disliked this dream
+        res.status(400).json({ message: "You have not disliked this dream" });
       }
     })
     .catch((err) => {

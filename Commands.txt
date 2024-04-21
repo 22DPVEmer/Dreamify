@@ -1,0 +1,5 @@
+
+// To find the folder containing mysql
+C:\Users\Dog star>cd C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin
+// to run it without pressing start all in laragon
+C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin>mysqld --console

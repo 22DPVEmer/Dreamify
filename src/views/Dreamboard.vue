@@ -20,7 +20,9 @@
             <button class="btn" @click="increaseLikes(dream)">
               <font-awesome-icon
                 :icon="['fas', 'thumbs-up']"
-                style="color: white"
+                :style="{
+                  color: dream.likeStatus === 'liked' ? '#00ccff' : 'white',
+                }"
               />
             </button>
             <div class="text-white">
@@ -30,7 +32,9 @@
             <button class="btn" @click="decreaseLikes(dream)">
               <font-awesome-icon
                 :icon="['fas', 'thumbs-down']"
-                style="color: white"
+                :style="{
+                  color: dream.likeStatus === 'disliked' ? '#00ccff' : 'white',
+                }"
               />
             </button>
             <button class="btn">
@@ -51,6 +55,8 @@ import { ref, onMounted } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
 
+//const hasDisliked = ref(false);
+
 const sharedDreams = ref([]);
 const loading = ref(true);
 //for the token so that the user can like the dream
@@ -61,8 +67,36 @@ onMounted(async () => {
   try {
     const response = await axios.get("http://localhost:8081/api/shared-dreams");
     if (response.data && Array.isArray(response.data)) {
-      sharedDreams.value = response.data;
+      // Add a likeStatus property to each dream
+      sharedDreams.value = response.data.map((dream) => ({
+        ...dream,
+        likeStatus: "neutral",
+      }));
       console.log("Shared dreams:", sharedDreams.value);
+
+      // Check if the user has liked each dream
+      for (const dream of sharedDreams.value) {
+        try {
+          const response = await axios.get(
+            `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/likeStatus`
+          );
+          if (response.data.likeStatus === "liked") {
+            dream.likeStatus = "liked";
+            console.log(dream.likeStatus);
+            console.log("User has liked dream:", dream.Id);
+          } else if (response.data.likeStatus === "disliked") {
+            dream.likeStatus = "disliked";
+            console.log(dream.likeStatus);
+            console.log("User has disliked dream:", dream.Id);
+          } else {
+            dream.likeStatus = "neutral";
+            console.log(dream.likeStatus);
+            console.log("User has not liked dream:", dream.Id);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
     } else {
       console.error("Unexpected response data:", response.data);
     }
@@ -72,39 +106,57 @@ onMounted(async () => {
     loading.value = false;
   }
 });
-
+// Increase the likes count for the dream
 const increaseLikes = async (dream) => {
-  // Increase the likes count in the local data
-
-  // Call your API to increase the likes count for this dream
-  await updateLikes(dream);
-  dream.Likes++;
-};
-
-const decreaseLikes = async (dream) => {
-  // Decrease the likes count in the local data, but not below zero
-  if (dream.Likes > 0) {
-    dream.Likes--;
-
-    // Call your API to decrease the likes count for this dream
-    await updateLikes(dream);
+  try {
+    if (dream.likeStatus === "liked") {
+      // If the dream is already liked, then unlike it
+      await axios.post(
+        `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/unlike`
+      );
+      dream.Likes--;
+      dream.likeStatus = "neutral";
+    } else {
+      // If the dream is not liked, then like it
+      await axios.post(
+        `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/like`
+      );
+      dream.Likes++;
+      dream.likeStatus = "liked";
+      if (dream.likeStatus === "disliked") {
+        // If the dream was disliked, then increase the likes count again
+        dream.Likes++;
+      }
+    }
+  } catch (error) {
+    console.error("Error checking likes:", error);
   }
 };
-
-const updateLikes = async (dream) => {
-  // Call your API to update the likes count for this dream
-  // You'll need to replace this with your actual API call
+// code for decreasing the likes
+const decreaseLikes = async (dream) => {
   try {
-    axios.interceptors.request.use(function (config) {
-      const token = localStorage.getItem("token");
-      config.headers.Authorization = token ? `Bearer ${token}` : "";
-      return config;
-    });
-    await axios.post(
-      `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/like`
+    // Check if the user has already disliked this dream
+    const response = await axios.post(
+      `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/dislike`
     );
+
+    if (response.data.message === "You have already disliked this dream") {
+      // The user has already disliked this dream, so can't dislike again
+      console.log("You have already disliked this dream");
+    } else if (response.data.message === "Dream disliked successfully") {
+      // The user has not disliked this dream yet, so the dislike was successful
+      if (dream.Likes > 0) {
+        dream.Likes--;
+      }
+      console.log("Dream disliked successfully");
+    } else {
+      // The user has not liked this dream yet, so just added the dislike
+      console.log(
+        "You haven't liked this dream yet, but it was disliked successfully"
+      );
+    }
   } catch (error) {
-    console.error("Error updating likes:", error);
+    console.error("Error disliking dream:", error);
   }
 };
 </script>
