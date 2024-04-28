@@ -678,3 +678,26 @@ app.post("/api/shared-dreams/:id/:userid/undislike", async (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 });
+
+app.get("/api/shared-dreams/:id/comments", (req, res) => {
+  console.log("Comments endpoint hit");
+  const dreamId = req.params.id;
+  pool
+    .query(
+      `SELECT * FROM comments WHERE ID IN (SELECT Comments FROM shared_dreams WHERE ID = ?)`,
+      [dreamId]
+    )
+    .then(([rows, fields]) => {
+      if (rows.length === 0) {
+        return res
+          .status(404)
+          .json({ message: "No comments found for this dream" });
+      }
+      console.log("Results is", rows);
+      res.json(rows);
+    })
+    .catch((error) => {
+      console.log("SQL Error:", error); // Log the SQL error
+      res.status(500).json({ message: error.message });
+    });
+});
