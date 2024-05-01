@@ -105,13 +105,14 @@ const toggleEdit = () => {
 
 const saveChanges = async () => {
   const requestBody = {
-    title: editedTitle.value, // Access the actual value of the 'title' reactive property
-    description: editedDescription.value, // Access the actual value of the 'description' reactive property
+    title: editedTitle.value,
+    description: editedDescription.value,
   };
 
   try {
     await axios.put(`http://localhost:8081/api/dreams/${dreamId}`, requestBody);
-
+    dream.value.title = editedTitle.value;
+    dream.value.description = editedDescription.value;
     editing.value = false;
   } catch (error) {
     console.error(error);

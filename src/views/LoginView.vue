@@ -42,23 +42,7 @@
                     required
                   />
                 </div>
-                <div class="col-12">
-                  <div class="form-check">
-                    <input
-                      class="form-check-input"
-                      type="checkbox"
-                      value=""
-                      name="remember_me"
-                      id="remember_me"
-                    />
-                    <label
-                      class="form-check-label text-secondary text-white"
-                      for="remember_me"
-                    >
-                      Keep me logged in
-                    </label>
-                  </div>
-                </div>
+
                 <div class="col-12">
                   <div class="d-grid">
                     <button
@@ -78,11 +62,15 @@
                 <div
                   class="d-flex gap-2 gap-md-4 flex-column flex-md-row justify-content-md-end"
                 >
-                  <a href="#!" class="link-white text-decoration-none"
-                    >Create new account</a
+                  <RouterLink
+                    to="/signup"
+                    class="link-white text-decoration-none"
+                    >Create new account</RouterLink
                   >
-                  <a href="#!" class="link-white text-decoration-none"
-                    >Forgot password</a
+                  <RouterLink
+                    to="/forgot-password"
+                    class="link-white text-decoration-none"
+                    >Forgot password</RouterLink
                   >
                 </div>
               </div>
@@ -148,6 +136,7 @@
 <script>
 import { ref, computed } from "vue";
 import store from "../store/store.js";
+import router from "@/router";
 const isLoggedIn = computed(() => store.state.isLoggedIn);
 
 export default {

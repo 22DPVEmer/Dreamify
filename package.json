@@ -19,6 +19,7 @@
     "@fullcalendar/vue3": "^6.1.10",
     "@syncfusion/ej2-vue-calendars": "^24.2.5",
     "axios": "^1.6.8",
+    "bad-words": "^3.0.4",
     "bcryptjs": "^2.4.3",
     "bootstrap": "^5.3.2",
     "cors": "^2.8.5",
@@ -29,6 +30,7 @@
     "jwt-decode": "^4.0.0",
     "mysql": "^2.18.1",
     "mysql2": "^3.9.4",
+    "nodemailer": "^6.9.13",
     "vue": "^3.4.15",
     "vue-router": "^4.2.5",
     "vuex": "^4.0.2"

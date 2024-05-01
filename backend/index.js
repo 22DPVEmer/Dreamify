@@ -236,10 +236,11 @@ app.get("/api/shared-dreams", async (req, res) => {
   pool
     .query(
       `
-      SELECT shared_dreams.*, dream_entries.title, dream_entries.description 
+      SELECT shared_dreams.*, dream_entries.title, dream_entries.description, users.username 
       FROM shared_dreams 
       INNER JOIN dream_entries ON shared_dreams.Dream_id = dream_entries.id
-    `
+      INNER JOIN users ON dream_entries.user_id = users.id
+      `
     )
     .then(([rows, fields]) => {
       console.log(rows);
@@ -678,15 +679,12 @@ app.post("/api/shared-dreams/:id/:userid/undislike", async (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 });
-
+//commments needs to be changed
 app.get("/api/shared-dreams/:id/comments", (req, res) => {
   console.log("Comments endpoint hit");
   const dreamId = req.params.id;
   pool
-    .query(
-      `SELECT * FROM comments WHERE ID IN (SELECT Comments FROM shared_dreams WHERE ID = ?)`,
-      [dreamId]
-    )
+    .query(`SELECT * FROM comments WHERE dream_id = ?`, [dreamId])
     .then(([rows, fields]) => {
       if (rows.length === 0) {
         return res
@@ -699,5 +697,483 @@ app.get("/api/shared-dreams/:id/comments", (req, res) => {
     .catch((error) => {
       console.log("SQL Error:", error); // Log the SQL error
       res.status(500).json({ message: error.message });
+    });
+});
+
+const nodemailer = require("nodemailer");
+
+app.post("/forgot-password", (req, res) => {
+  const { email } = req.body;
+  const sql = "SELECT * FROM users WHERE email = ?";
+  console.log(email);
+  db.query(sql, [email], async (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error while resetting password" });
+    } else {
+      if (result.length > 0) {
+        // Generate a password reset token
+        const resetToken = crypto.randomBytes(20).toString("hex");
+
+        // Save the reset token to the database
+        const sqlUpdate = "UPDATE users SET resetToken = ? WHERE email = ?";
+        db.query(sqlUpdate, [resetToken, email], async (err, result) => {
+          // Add async here
+          if (err) {
+            res.status(500).json({ message: "Error while saving reset token" });
+          } else {
+            // Create a transporter
+            let transporter = nodemailer.createTransport({
+              service: "gmail", // replace with your email service
+              auth: {
+                user: "viestursemerbergs@gmail.com", // replace with your email
+                pass: "hnik xldy imdc qaav", // replace with your email password
+              },
+            });
+
+            // Send the email
+            try {
+              let info = await transporter.sendMail({
+                // Now await is allowed here
+                from: '"Password Reset" <viestursemerbergs@gmail.com>', // replace with your email
+                to: email,
+                subject: "Password Reset",
+                text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\nhttp://localhost:5173/reset-password/${resetToken}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n`,
+              });
+
+              res
+                .status(200)
+                .json({ message: "Password reset link sent to email" });
+            } catch (err) {
+              res.status(500).json({ message: "Error while sending email" });
+            }
+          }
+        });
+      } else {
+        res.status(404).json({ message: "User not found" });
+      }
+    }
+  });
+});
+
+app.post("/reset-password/:token", (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  // Find the user with the reset token
+  const sql = "SELECT * FROM users WHERE resetToken = ?";
+  db.query(sql, [token], (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error while resetting password" });
+    } else {
+      if (result.length > 0) {
+        // Update the user's password and nullify the reset token in the database
+        const sqlUpdate =
+          "UPDATE users SET password = ?, resetToken = NULL WHERE resetToken = ?";
+        db.query(sqlUpdate, [password, token], (err, result) => {
+          if (err) {
+            res.status(500).json({ message: "Error while updating password" });
+          } else {
+            res.status(200).json({ message: "Password updated successfully" });
+          }
+        });
+      } else {
+        res.status(404).json({ message: "Invalid reset token" });
+      }
+    }
+  });
+});
+
+// Create the endpoint for adding comments
+app.post("/api/shared-dreams/comments/:userId", (req, res) => {
+  const { userId } = req.params;
+  const { text, dreamId } = req.body;
+  const date = new Date().toISOString().slice(0, 19).replace("T", " "); // Get current date in MySQL datetime format
+  const likes = 0;
+
+  const sql =
+    "INSERT INTO comments (UserId, Contents,Dream_id,Date_posted,Likes) VALUES (?, ?, ?,?,?)";
+  db.query(sql, [userId, text, dreamId, date, likes], (err, result) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ message: "Error inserting comment" });
+    } else {
+      res.status(200).json({ message: "Comment inserted successfully" });
+    }
+  });
+});
+
+//dislike comments
+app.post(
+  "/api/shared-dreams/comments/:id/:userid/dislike",
+  async (req, res) => {
+    const commentId = req.params.id;
+    const userId = req.params.userid;
+
+    // Check if the user has already disliked this comment
+    pool
+      .query(
+        `SELECT * FROM comment_likes WHERE User_Id = ? AND Comment_Id = ? AND disliked = TRUE`,
+        [userId, commentId]
+      )
+      .then(([rows, fields]) => {
+        if (rows.length > 0) {
+          // The user has already disliked this comment, so can't dislike again
+          res
+            .status(400)
+            .json({ message: "You have already disliked this comment" });
+        } else {
+          // The user has not disliked this comment yet, so proceed
+
+          // Check if the user has liked this comment
+          pool
+            .query(
+              `SELECT * FROM comment_likes WHERE User_Id = ? AND Comment_Id = ?`,
+              [userId, commentId]
+            )
+            .then(([rows, fields]) => {
+              if (rows.length > 0) {
+                // The user has liked this comment, so remove the like and add the dislike
+                pool
+                  .query(
+                    `UPDATE comment_likes SET disliked = TRUE WHERE User_Id = ? AND Comment_Id = ?`,
+                    [userId, commentId]
+                  )
+                  .then(([rows, fields]) => {
+                    // Decrement the like count in the comments table if not null
+                    pool
+                      .query(
+                        `UPDATE comments SET Likes = Likes - 1 WHERE Id = ?`,
+                        [commentId]
+                      )
+                      .then(([rows, fields]) => {
+                        res.json({ message: "Comment disliked successfully" });
+                      });
+                  });
+              } else {
+                // The user has not liked this comment yet, so just add the dislike
+                pool
+                  .query(
+                    `INSERT INTO comment_likes (User_Id, Comment_Id, disliked) VALUES (?, ?, TRUE)`,
+                    [userId, commentId]
+                  )
+                  .then(([rows, fields]) => {
+                    // Decrement the like count in the comments table if not null
+                    pool
+                      .query(
+                        `UPDATE comments SET Likes = Likes - 1 WHERE Id = ?`,
+                        [commentId]
+                      )
+                      .then(([rows, fields]) => {
+                        res.json({ message: "Comment disliked successfully" });
+                      });
+                  });
+              }
+            });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      });
+  }
+);
+//like comments
+app.post("/api/shared-dreams/comments/:id/:userid/like", async (req, res) => {
+  const commentId = req.params.id;
+  const userId = req.params.userid;
+
+  // Check if the user has already liked or disliked this comment
+  pool
+    .query(`SELECT * FROM comment_likes WHERE User_Id = ? AND Comment_Id = ?`, [
+      userId,
+      commentId,
+    ])
+    .then(([rows, fields]) => {
+      if (rows.length > 0) {
+        // The user has already liked or disliked this comment
+        if (rows[0].disliked) {
+          // The user has disliked this comment, so change it to a like
+          pool
+            .query(`UPDATE comments SET Likes = Likes + 1 WHERE Id = ?`, [
+              commentId,
+            ])
+            .then(([rows, fields]) => {
+              pool
+                .query(
+                  `UPDATE comment_likes SET disliked = FALSE WHERE User_Id = ? AND Comment_Id = ?`,
+                  [userId, commentId]
+                )
+                .then(([rows, fields]) => {
+                  res.json({ message: "Comment liked successfully" });
+                });
+            });
+        } else {
+          // The user has already liked this comment
+          res
+            .status(400)
+            .json({ message: "You have already liked this comment" });
+        }
+      } else {
+        // The user has not liked or disliked this comment yet, so add a like
+        pool
+          .query(`UPDATE comments SET Likes = Likes + 1 WHERE Id = ?`, [
+            commentId,
+          ])
+          .then(([rows, fields]) => {
+            pool
+              .query(
+                `INSERT INTO comment_likes (User_Id, Comment_Id, disliked) VALUES (?, ?, FALSE)`,
+                [userId, commentId]
+              )
+              .then(([rows, fields]) => {
+                res.json({ message: "Comment liked successfully" });
+              });
+          });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+//unlike comments
+app.post("/api/shared-dreams/comments/:id/:userid/unlike", async (req, res) => {
+  const commentId = req.params.id;
+  const userId = req.params.userid;
+
+  // Check if the user has already liked this comment
+  pool
+    .query(`SELECT * FROM comment_likes WHERE User_Id = ? AND Comment_Id = ?`, [
+      userId,
+      commentId,
+    ])
+    .then(([rows, fields]) => {
+      if (rows.length > 0 && !rows[0].disliked) {
+        // The user has liked this comment, so remove the like
+        pool
+          .query(`UPDATE comments SET Likes = Likes - 1 WHERE Id = ?`, [
+            commentId,
+          ])
+          .then(([rows, fields]) => {
+            pool
+              .query(
+                `DELETE FROM comment_likes WHERE User_Id = ? AND Comment_Id = ?`,
+                [userId, commentId]
+              )
+              .then(([rows, fields]) => {
+                res.json({ message: "Comment unliked successfully" });
+              });
+          });
+      } else {
+        // The user has not liked this comment
+        res.status(400).json({ message: "You have not liked this comment" });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+//undislike comments
+app.post(
+  "/api/shared-dreams/comments/:id/:userid/undislike",
+  async (req, res) => {
+    const commentId = req.params.id;
+    const userId = req.params.userid;
+
+    // Check if the user has already disliked this comment
+    pool
+      .query(
+        `SELECT * FROM comment_likes WHERE User_Id = ? AND Comment_Id = ?`,
+        [userId, commentId]
+      )
+      .then(([rows, fields]) => {
+        if (rows.length > 0 && rows[0].disliked) {
+          // The user has disliked this comment, so remove the dislike
+          pool
+            .query(
+              `DELETE FROM comment_likes WHERE User_Id = ? AND Comment_Id = ?`,
+              [userId, commentId]
+            )
+            .then(([rows, fields]) => {
+              // Only increase likes if the dislike record was successfully deleted
+              if (rows.affectedRows > 0) {
+                pool
+                  .query(`UPDATE comments SET Likes = Likes + 1 WHERE Id = ?`, [
+                    commentId,
+                  ])
+                  .then(([rows, fields]) => {
+                    res.json({ message: "Comment undisliked successfully" });
+                  });
+              } else {
+                res.json({ message: "You have not disliked this comment" });
+              }
+            });
+        } else {
+          // The user has not disliked this comment
+          res
+            .status(400)
+            .json({ message: "You have not disliked this comment" });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      });
+  }
+);
+//like_status comments
+app.get(
+  "/api/shared-dreams/comments/:id/:userid/likeStatus",
+  async (req, res) => {
+    const commentId = req.params.id;
+    const userId = req.params.userid;
+
+    // Check if the user has liked or disliked this comment
+    pool
+      .query(
+        `SELECT * FROM comment_likes WHERE User_Id = ? AND Comment_Id = ? `,
+        [userId, commentId]
+      )
+      .then(([rows, fields]) => {
+        if (rows.length > 0) {
+          if (rows[0].disliked) {
+            // The user has disliked this comment
+            res.json({ likeStatus: "disliked" });
+          } else {
+            // The user has liked this comment
+            res.json({ likeStatus: "liked" });
+          }
+        } else {
+          // The user has not liked or disliked this comment
+          res.json({ likeStatus: "neutral" });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      });
+  }
+);
+
+//dislike from like comments
+app.post(
+  "/api/shared-dreams/comments/:id/:userid/dislikeFromLike",
+  async (req, res) => {
+    const commentId = req.params.id;
+    const userId = req.params.userid;
+
+    // Check if the user has already liked or disliked this comment
+    pool
+      .query(
+        `SELECT * FROM comment_likes WHERE User_Id = ? AND Comment_Id = ?`,
+        [userId, commentId]
+      )
+      .then(([rows, fields]) => {
+        if (rows.length > 0) {
+          // The user has already liked or disliked this comment
+          if (!rows[0].disliked) {
+            // The user has liked this comment, so change it to a dislike and decrease the likes count by 2
+            pool
+              .query(`UPDATE comments SET Likes = Likes - 2 WHERE Id = ?`, [
+                commentId,
+              ])
+              .then(([rows, fields]) => {
+                pool
+                  .query(
+                    `UPDATE comment_likes SET disliked = TRUE WHERE User_Id = ? AND Comment_Id = ?`,
+                    [userId, commentId]
+                  )
+                  .then(([rows, fields]) => {
+                    res.json({ message: "Comment disliked successfully" });
+                  });
+              });
+          } else {
+            // The user has already disliked this comment
+            res
+              .status(400)
+              .json({ message: "You have already disliked this comment" });
+          }
+        } else {
+          // The user has not liked or disliked this comment yet, so return an error
+          res
+            .status(400)
+            .json({ message: "You have not liked this comment yet" });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      });
+  }
+);
+
+app.post(
+  "/api/shared-dreams/comments/:id/:userid/likeFromDislike",
+  async (req, res) => {
+    const commentId = req.params.id;
+    const userId = req.params.userid;
+
+    // Check if the user has already liked or disliked this comment
+    pool
+      .query(
+        `SELECT * FROM comment_likes WHERE User_Id = ? AND Comment_Id = ?`,
+        [userId, commentId]
+      )
+      .then(([rows, fields]) => {
+        if (rows.length > 0) {
+          // The user has already liked or disliked this comment
+          if (rows[0].disliked) {
+            // The user has disliked this comment, so change it to a like and increase the likes count by 2
+            pool
+              .query(`UPDATE comments SET Likes = Likes + 2 WHERE Id = ?`, [
+                commentId,
+              ])
+              .then(([rows, fields]) => {
+                pool
+                  .query(
+                    `UPDATE comment_likes SET disliked = FALSE WHERE User_Id = ? AND Comment_Id = ?`,
+                    [userId, commentId]
+                  )
+                  .then(([rows, fields]) => {
+                    res.json({ message: "Comment liked successfully" });
+                  });
+              });
+          } else {
+            // The user has already liked this comment
+            res
+              .status(400)
+              .json({ message: "You have already liked this comment" });
+          }
+        } else {
+          // The user has not liked or disliked this comment yet, so return an error
+          res
+            .status(400)
+            .json({ message: "You have not disliked this comment yet" });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      });
+  }
+);
+
+app.get("/api/users/:commentId/comments", async (req, res) => {
+  const commentid = req.params.commentId;
+
+  // Check if the user exists
+  pool
+    .query(`SELECT username FROM users WHERE Id = ?`, [commentid])
+    .then(([rows, fields]) => {
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      } else {
+        res.json({ username: rows[0].username });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
     });
 });

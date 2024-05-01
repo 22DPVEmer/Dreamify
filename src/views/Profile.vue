@@ -9,14 +9,22 @@
     <div v-else>
       <div class="card mt-3">
         <div class="card-body">
+          <h1 class="card-title">Username: {{ user.username }}</h1>
           <h5 class="card-title">Name: {{ user.name }}</h5>
           <p class="card-text">Email: {{ user.email }}</p>
         </div>
       </div>
       <div v-if="dreams.length" class="mt-3">
         <h2 class="text-white">Dreams:</h2>
+        <input
+          type="text"
+          class="form-control me-5"
+          placeholder="Search by name..."
+          v-model="searchQuery"
+          style="width: 200px"
+        />
         <div
-          v-for="dream in dreams"
+          v-for="dream in filteredDreams"
           :key="dream.id"
           class="card mt-2"
           @click="selectDream(dream.id)"
@@ -55,31 +63,29 @@
   </div>
 </template>
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
 import router from "@/router";
 import store from "../store/store.js";
-/* 
 
-
-
-
-get back to this later
-
-nav veel github so safe
-
-
-
-
-*/
 const user = ref(null);
 const dreams = ref([]); // Create a ref to hold the dreams
 const loading = ref(true); // Create a ref to hold the loading state
+const searchQuery = ref("");
 
 const selectDream = (id) => {
   store.commit("setSelectedDreamId", id);
 };
+const filteredDreams = computed(() => {
+  // Add this block
+  if (!searchQuery.value) {
+    return dreams.value;
+  }
+  return dreams.value.filter((dream) =>
+    dream.title.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
 
 onMounted(async () => {
   const token = localStorage.getItem("token");

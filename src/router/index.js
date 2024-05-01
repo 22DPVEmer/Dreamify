@@ -39,6 +39,16 @@ const router = createRouter({
       name: "dreamboard",
       component: () => import("../views/Dreamboard.vue"),
     },
+    {
+      path: "/forgot-password",
+      name: "Forgot",
+      component: () => import("../views/ForgotPassword.vue"),
+    },
+    {
+      path: "/reset-password/:token",
+      name: "Reset",
+      component: () => import("../views/ResetPassword.vue"),
+    },
   ],
 });
 

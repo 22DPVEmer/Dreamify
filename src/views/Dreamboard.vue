@@ -1,6 +1,15 @@
 <template>
   <div class="container" style="margin-top: 200px; color: white">
-    <div class="d-flex justify-content-center align-items-center">
+    <div class="d-flex justify-content-between align-items-center">
+      <!-- Add this input field for the search bar -->
+
+      <input
+        type="text"
+        class="form-control me-5"
+        placeholder="Search by name..."
+        v-model="searchQuery"
+        style="width: 200px"
+      />
       <h1
         class="my-4 me-5 text-white"
         :class="{
@@ -32,12 +41,13 @@
     <div v-if="loading">Loading...</div>
     <div
       v-else
-      v-for="dream in sharedDreams"
+      v-for="dream in filteredDreams"
       :key="dream.Id"
       class="card text-white bg-dark mb-3"
       style="color: white; background-color: black"
     >
       <div class="card-body">
+        <p class="card-text text-white">{{ dream.username }}</p>
         <h2 class="card-title text-white">{{ dream.title }}</h2>
         <p class="card-text text-white">{{ dream.description }}</p>
         <p class="card-text text-white">
@@ -68,36 +78,36 @@
 
             <button
               class="btn text-white"
-              @click="showComments = !showComments"
+              @click="dream.showComments = !dream.showComments"
             >
               <font-awesome-icon
                 :icon="['fas', 'comment']"
                 style="color: white"
               />
-              {{ comments.length }}
+              {{ dream.comments.length }}
             </button>
-            <!-- Needs to be its own thing seperate from this container I guess, maybe a component mayb not-->
-            <div class="text-white"></div>
-          </div>
-          <div v-if="showComments">
-            <div v-for="com in comments" :key="com.ID">
-              <h3>{{ com.author }}</h3>
-              <p class="text-white">{{ com.Contents }}</p>
-            </div>
           </div>
         </div>
       </div>
+
+      <Comments
+        :comments="dream.comments"
+        :showComments="dream.showComments"
+        :dreamId="dream.Id"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
+import Comments from "../components/Comments.vue";
 
 //const hasDisliked = ref(false);
 const showComments = ref(false);
+const searchQuery = ref("");
 const comments = ref([]);
 const sharedDreams = ref([]);
 const loading = ref(true);
@@ -107,6 +117,15 @@ const decodedToken = jwtDecode(token); // decode without verification
 const userId = decodedToken.userId;
 
 const selected = ref(null);
+const filteredDreams = computed(() => {
+  if (!searchQuery.value) {
+    return sharedDreams.value;
+  }
+  return sharedDreams.value.filter((dream) =>
+    dream.title.toLowerCase().includes(searchQuery.value.toLowerCase())
+  );
+});
+
 onMounted(async () => {
   try {
     const response = await axios.get("http://localhost:8081/api/shared-dreams");
@@ -115,6 +134,8 @@ onMounted(async () => {
       sharedDreams.value = response.data.map((dream) => ({
         ...dream,
         likeStatus: "neutral",
+        comments: [],
+        showComments: false,
       }));
       console.log("Shared dreams:", sharedDreams.value);
 
@@ -142,9 +163,8 @@ onMounted(async () => {
           const commentsResponse = await axios.get(
             `http://localhost:8081/api/shared-dreams/${dream.Id}/comments`
           );
-          console.log("Comments response:", commentsResponse.data); // Log the response
-          comments.value = [...comments.value, ...commentsResponse.data]; // Append new comments
-          console.log("Comments:", comments.value); // Log the comments
+
+          dream.comments = [...comments.value, ...commentsResponse.data]; // Append new comments
         } catch (error) {
           console.error("Error fetching comments:", error);
         }

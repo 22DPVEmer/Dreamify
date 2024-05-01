@@ -111,6 +111,7 @@
 </template>
 <script>
 import { formatISO, subDays } from "date-fns";
+import Filter from "bad-words";
 
 document.addEventListener("DOMContentLoaded", function () {
   const dobInput = document.getElementById("dob");
@@ -121,12 +122,33 @@ document.addEventListener("DOMContentLoaded", function () {
 
 export default {
   methods: {
-    async submitForm() {
-      const userData = {
-        name: document.getElementById("name").value,
-        surname: document.getElementById("surname").value,
-        username: document.getElementById("username").value, // Assuming this is the email field
+    validateInput(input) {
+      const regex = /^[a-zA-Z]+$/; // This regex allows only alphabets
+      let filter = new Filter();
 
+      if (!regex.test(input) || filter.isProfane(input)) {
+        return false;
+      }
+      return true;
+    },
+    async submitForm() {
+      const name = document.getElementById("name").value;
+      const surname = document.getElementById("surname").value;
+      const username = document.getElementById("username").value;
+
+      if (
+        !this.validateInput(name) ||
+        !this.validateInput(surname) ||
+        !this.validateInput(username)
+      ) {
+        alert("Invalid input. Please enter appropriate and valid information.");
+        return;
+      }
+
+      const userData = {
+        name: name,
+        surname: surname,
+        username: username,
         password: document.getElementById("password").value,
         email: document.getElementById("email").value,
       };
