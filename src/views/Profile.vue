@@ -26,7 +26,7 @@
         <div
           v-for="dream in filteredDreams"
           :key="dream.id"
-          class="card mt-2"
+          class="card mt-2 dream-card"
           @click="selectDream(dream.id)"
         >
           <div class="card-body">

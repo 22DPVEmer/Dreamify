@@ -128,23 +128,53 @@ app.put("/api/dreams/:dreamId", async (req, res) => {
 
 //Dream entry delete endpoint code
 
-app.delete("/api/dreams/:dreamId", async (req, res) => {
-  const dreamId = req.params.dreamId;
+app.delete("/api/dreams/:id", async (req, res) => {
+  const dreamId = req.params.id;
+  const token = req.headers.authorization.split(" ")[1];
+  const decodedToken = jwt.verify(token, secretKey);
+  const userId = decodedToken.userId;
 
-  // Query the database
-  pool
-    .query("DELETE FROM dream_entries WHERE id = ?", [dreamId])
-    .then(([rows, fields]) => {
-      if (rows.affectedRows > 0) {
-        res.json({ message: "Dream deleted successfully" });
+  try {
+    // Start a transaction
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Delete the tags that reference the dream
+      await connection.query("DELETE FROM tags WHERE dream_id = ?", [dreamId]);
+
+      // Delete the shared dreams that reference the dream
+      await connection.query("DELETE FROM shared_dreams WHERE dream_id = ?", [
+        dreamId,
+      ]);
+
+      // Delete the dream
+      const [results] = await connection.query(
+        "DELETE FROM dream_entries WHERE id = ? AND user_id = ?",
+        [dreamId, userId]
+      );
+
+      // If the dream doesn't exist or doesn't belong to the authenticated user, rollback the transaction and send a 404 error
+      if (results.affectedRows === 0) {
+        await connection.rollback();
+        res.status(404).send({ error: "Dream not found" });
       } else {
-        res.status(404).json({ message: "No dream found with this id" });
+        // If the operation is successful, commit the transaction and send a 200 status code with a success message
+        await connection.commit();
+        res.status(200).send({ message: "Dream deleted" });
       }
-    })
-    .catch((err) => {
-      console.error(err);
-      res.status(500).json({ message: "Server error" });
-    });
+    } catch (error) {
+      // If there's an error, rollback the transaction
+      await connection.rollback();
+      throw error;
+    } finally {
+      // Release the connection
+      connection.release();
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: "Server error" });
+  }
 });
 
 // Connect to the dimport axios from 'axios';atabase
@@ -279,25 +309,42 @@ app.post("/login", (req, res) => {
 // Dream entry code
 
 app.post("/user", (req, res) => {
-  const { date, title, description } = req.body;
-  const sql =
-    "INSERT INTO dream_entries (user_id, date, title, description) VALUES (?, ?, ?, ?)";
+  const { date, title, description, lucid, tags } = req.body;
+  const sqlDreamEntries =
+    "INSERT INTO dream_entries (user_id, date, title, description, lucid) VALUES (?, ?, ?, ?, ?)";
+  const sqlTags =
+    "INSERT INTO tags (tag_name, user_id, dream_id) VALUES (?, ?, ?)";
 
   // Get user ID from token
-
   const token = req.headers.authorization.split(" ")[1];
   const decodedToken = jwt.verify(token, secretKey);
   const userId = decodedToken.userId;
-  console.log("Received token:", token);
 
-  db.query(sql, [userId, date, title, description], (err, result) => {
-    if (err) {
-      console.log(err);
-      res.status(400).send("Error adding dream");
-    } else {
-      res.status(200).send("Dream added successfully");
+  // Insert dream entry
+  db.query(
+    sqlDreamEntries,
+    [userId, date, title, description, lucid],
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        res.status(400).send("Error adding dream");
+      } else {
+        const dreamId = result.insertId;
+
+        // Insert tags
+        tags.forEach((tag) => {
+          db.query(sqlTags, [tag, userId, dreamId], (err, result) => {
+            if (err) {
+              console.log(err);
+              res.status(400).send("Error adding tag");
+            } else {
+              console.log("Tag added successfully");
+            }
+          });
+        });
+      }
     }
-  });
+  );
 });
 
 //token code

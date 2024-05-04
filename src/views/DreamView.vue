@@ -60,7 +60,7 @@ let editedTitle = ref("");
 let editedDescription = ref("");
 
 //post request for sharing dream
-
+const token = localStorage.getItem("token");
 const shareDream = async () => {
   console.log("Sharing dream with id:", dreamId);
   try {
@@ -121,7 +121,10 @@ const saveChanges = async () => {
 
 const deleteDream = async () => {
   try {
-    await axios.delete(`http://localhost:8081/api/dreams/${dreamId}`);
+    await axios.delete(`http://localhost:8081/api/dreams/${dreamId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
     // Navigate to dream list or perform any other action after successful deletion
     router.push({ name: "profile" });
   } catch (error) {
