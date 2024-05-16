@@ -7,22 +7,21 @@
             <span v-if="editing">
               <input type="text" v-model="editedTitle" class="form-control" />
             </span>
-            <span v-else>{{ dream.title }}</span>
-            <button class="btn btn-sm btn-primary ms-2" @click="toggleEdit">
-              {{ editing ? "Save" : "Edit" }}
-            </button>
-            <button class="btn btn-sm btn-info ms-2" @click="shareDream">
-              Share
-            </button>
+
+            <span v-else>
+              <span class="title-label">Title</span>
+              <span class="title-value">{{ dream.title }}</span>
+            </span>
           </h5>
           <p class="card-text">
+
             <span v-if="editing">
               <textarea
                 v-model="editedDescription"
                 class="form-control"
               ></textarea>
             </span>
-            <span v-else>{{ dream.description }}</span>
+            <span v-else><span class="title-label">Description </span class="title-value">{{ dream.description }}</span>
           </p>
           <p class="card-text">
             <small class="text-muted">{{ formattedDate(dream.date) }}</small>
@@ -30,16 +29,28 @@
           <button class="btn btn-sm btn-danger" @click="deleteDream">
             Delete
           </button>
+          <button         type="button"
+          
+          data-bs-toggle="modal"
+          data-bs-target="#dreamEntryModal" class="btn btn-sm btn-primary ms-2" >
+            Edit
+          </button>
+          <button  class="btn btn-sm btn-info ms-2" @click="shareDream">
+            Share
+          </button>
         </div>
       </div>
     </div>
     <div v-else>
       <p>No dream selected.</p>
     </div>
+    <DreamInfo/>
   </div>
 </template>
 
 <script setup>
+
+import DreamInfo from "../components/DreamInfosave.vue";
 //New File, doesnt work
 import { ref, onMounted, computed } from "vue";
 import axios from "axios";
@@ -121,7 +132,7 @@ const saveChanges = async () => {
 
 const deleteDream = async () => {
   try {
-    await axios.delete(`http://localhost:8081/api/dreams/${dreamId}`, {
+    await axios.delete(`http://localhost:8081/api/dreams/${dreamId}/delete`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -141,5 +152,14 @@ const formattedDate = (dateString) => {
 <style scoped>
 .card {
   border: 1px solid rgba(0, 0, 0, 0.125);
+}
+.title-label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.title-value {
+  display: block;
 }
 </style>

@@ -67,7 +67,7 @@ app.get("/api/users/:userId/dreams", async (req, res) => {
         .query("SELECT * FROM dream_entries WHERE user_id = ?", [userId])
         .then(([rows, fields]) => {
           if (rows.length > 0) {
-            res.json(rows); // If the user has dreams, send them
+            res.json(rows); // If the user has dreams, sed them
           } else {
             res.status(404).json({ message: "No dreams found for this user" }); // If the user has no dreams, send an error
           }
@@ -125,50 +125,85 @@ app.put("/api/dreams/:dreamId", async (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 });
+//for fetching dreams to save
+app.get("/api/dreams/:id/fetch", (req, res) => {
+  console.log("Fetch dream endpoint hit");
+  const dreamId = req.params.id;
 
+  pool
+    .query("SELECT * FROM dream_entries WHERE id = ?", [dreamId])
+    .then(([rows, fields]) => {
+      if (rows.length > 0) {
+        res.json(rows[0]);
+      } else {
+        res.status(404).json({ message: "No dream found with this id" });
+      }
+    })
+
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
 //Dream entry delete endpoint code
 
-app.delete("/api/dreams/:id", async (req, res) => {
+app.delete("/api/dreams/:id/delete", async (req, res) => {
   const dreamId = req.params.id;
   const token = req.headers.authorization.split(" ")[1];
   const decodedToken = jwt.verify(token, secretKey);
   const userId = decodedToken.userId;
 
   try {
-    // Start a transaction
     const connection = await pool.getConnection();
     await connection.beginTransaction();
 
     try {
-      // Delete the tags that reference the dream
+      const [sharedDreams] = await connection.query(
+        "SELECT id FROM shared_dreams WHERE dream_id = ?",
+        [dreamId]
+      );
+      await connection.query("DELETE FROM dream_likes WHERE DreamId = ?", [
+        sharedDreams[0].id,
+      ]);
+
       await connection.query("DELETE FROM tags WHERE dream_id = ?", [dreamId]);
 
-      // Delete the shared dreams that reference the dream
+      const [comments] = await connection.query(
+        "SELECT ID FROM comments WHERE Dream_id = ?",
+        [sharedDreams[0].id]
+      );
+
+      for (let comment of comments) {
+        await connection.query(
+          "DELETE FROM comment_likes WHERE comment_id = ?",
+          [comment.ID]
+        );
+      }
+
+      await connection.query("DELETE FROM comments WHERE Dream_id = ?", [
+        sharedDreams[0].id,
+      ]);
+
       await connection.query("DELETE FROM shared_dreams WHERE dream_id = ?", [
         dreamId,
       ]);
 
-      // Delete the dream
       const [results] = await connection.query(
         "DELETE FROM dream_entries WHERE id = ? AND user_id = ?",
         [dreamId, userId]
       );
 
-      // If the dream doesn't exist or doesn't belong to the authenticated user, rollback the transaction and send a 404 error
       if (results.affectedRows === 0) {
         await connection.rollback();
         res.status(404).send({ error: "Dream not found" });
       } else {
-        // If the operation is successful, commit the transaction and send a 200 status code with a success message
         await connection.commit();
         res.status(200).send({ message: "Dream deleted" });
       }
     } catch (error) {
-      // If there's an error, rollback the transaction
       await connection.rollback();
       throw error;
     } finally {
-      // Release the connection
       connection.release();
     }
   } catch (error) {
@@ -221,13 +256,119 @@ db.connect((err) => {
 app.listen(port, () => {
   console.log(`Server is running at port ${port}`);
 });
+/*
+app.post("/api/signup", async (req, res) => {
+  const { name, surname, username, password, email } = req.body;
+  let haspassword = generateSecretKey();
+  const query = `
+    INSERT INTO users (name, surname, username, password, email)
+    VALUES (?, ?, ?, ?, ?)
+  `;
 
+  try {
+    const result = await pool.query(query, [
+      name,
+      surname,
+      username,
+      password,
+      email,
+    ]);
+    res.status(201).json(result[0]); // Send back the inserted user data
+  } catch (error) {
+    console.error("Error executing query", error.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+*/
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
+app.post("/api/signup", async (req, res) => {
+  let { name, surname, username, password, email } = req.body;
+  const regex = /^[a-zA-Z]+$/;
+  if (!regex.test(name) || !regex.test(surname)) {
+    return res
+      .status(400)
+      .json({ error: "Name and surname can only contain alphabets" });
+  }
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({
+      error:
+        "Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long",
+    });
+  }
+  password = bcrypt.hashSync(password, saltRounds);
+  const query = `
+    INSERT INTO users (name, surname, username, password, email)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+  try {
+    const result = await pool.query(query, [
+      name,
+      surname,
+      username,
+      password,
+      email,
+    ]);
+    const user = result[0];
+    let token = generateToken(user);
+    res.status(201).json({ user: user, token: token });
+  } catch (error) {
+    console.error("Error executing query", error.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+/*
+app.post("/api/signup", async (req, res) => {
+  const { name, surname, username, password, email } = req.body;
+
+  // Validate input
+  const regex = /^[a-zA-Z]+$/; // This regex allows only alphabets
+  if (!regex.test(name) || !regex.test(surname) || !regex.test(username)) {
+    return res
+      .status(400)
+      .json({ error: "Name, surname and username can only contain alphabets" });
+  }
+
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({
+      error:
+        "Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long",
+    });
+  }
+
+  const query = `
+    INSERT INTO users (name, surname, username, password, email)
+    VALUES (?, ?, ?, ?, ?)
+  `;
+
+  try {
+    const result = await pool.query(query, [
+      name,
+      surname,
+      username,
+      password,
+      email,
+    ]);
+    res.status(201).json(result[0]); // Send back the inserted user data
+  } catch (error) {
+    console.error("Error executing query", error.stack);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 //User REgistartion
-app.post("/signup", (req, res) => {
-  const { name, surname, email, password } = req.body;
+//User Registration
+/*
+app.post("/api/signup", (req, res) => {
+  console.log(req.body);
+  const { name, surname, email, username, password } = req.body;
   const sql =
-    "INSERT INTO users (name, surname, email, password) VALUES (?, ?, ?,?)";
-  db.query(sql, [name, surname, email, password], (err, result) => {
+    "INSERT INTO users (name, surname, email, username, password) VALUES (?, ?, ?, ?, ?)";
+  db.query(sql, [name, surname, email, username, password], (err, result) => {
     if (err) {
       res.status(400).send("Error registering user");
     } else {
@@ -235,7 +376,7 @@ app.post("/signup", (req, res) => {
     }
   });
 });
-
+*/
 //Shared dreams creation code
 app.post("/api/dreams/:dreamId/share", async (req, res) => {
   const dreamId = req.params.dreamId;
@@ -287,20 +428,28 @@ app.get("/api/shared-dreams", async (req, res) => {
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
-  const sql = "SELECT * FROM users WHERE email = ? AND password = ?";
-  db.query(sql, [email, password], (err, result) => {
+  const sql = "SELECT * FROM users WHERE email = ?";
+  db.query(sql, [email], (err, result) => {
     if (err) {
       res.status(500).send("Error while logging in");
     } else {
       if (result.length > 0) {
-        // User found, login successful
-        let token = generateToken(result[0]); // Generate token with user data
-        console.log(token); // Log the token for debugging
-        res
-          .status(200)
-          .json({ message: "Login successful", user: result[0], token: token }); // Send token to client
+        const user = result[0];
+        // Compare the password with the hashed password stored in the database
+        const match = bcrypt.compareSync(password, user.password);
+
+        if (match) {
+          let token = generateToken(user);
+
+          res
+            .status(200)
+            .json({ message: "Login successful", user: user, token: token });
+        } else {
+          // Password does not match
+          res.status(401).send("Invalid email or password");
+        }
       } else {
-        // User not found or password incorrect
+        // User not found
         res.status(401).send("Invalid email or password");
       }
     }
@@ -346,7 +495,33 @@ app.post("/user", (req, res) => {
     }
   );
 });
+// Dream entry saval code
+app.post("/user/save", (req, res) => {
+  console.log(req.body);
+  const { dreamId, date, title, description, lucid } = req.body;
+  const sqlUpdateDreamEntries =
+    "UPDATE dream_entries SET date = ?, title = ?, description = ?, lucid = ? WHERE id = ? AND user_id = ?";
 
+  const token = req.headers.authorization.split(" ")[1];
+  const decodedToken = jwt.verify(token, secretKey);
+  const userId = decodedToken.userId;
+  console.log("users id is", userId);
+  console.log("date", dreamId);
+  console.log("dream id is", dreamId);
+
+  db.query(
+    sqlUpdateDreamEntries,
+    [date, title, description, lucid, dreamId, userId],
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        res.status(400).send("Error updating dream");
+      } else {
+        console.log("Dream updated successfully");
+      }
+    }
+  );
+});
 //token code
 const jwt = require("jsonwebtoken");
 

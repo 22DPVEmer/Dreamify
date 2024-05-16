@@ -72,8 +72,14 @@
                   <label for="password" class="form-label text-white"
                     >Password <span class="text-info">*</span></label
                   >
+                  <font-awesome-icon
+                    :icon="['fas', 'eye']"
+                    style="color: white; cursor: pointer"
+                    class="ms-2"
+                    @click="showPassword = !showPassword"
+                  />
                   <input
-                    type="password"
+                    :type="showPassword ? 'text' : 'password'"
                     class="form-control bg-dark text-white"
                     name="password"
                     id="password"
@@ -110,8 +116,8 @@
   </div>
 </template>
 <script>
+import axios from "axios";
 import { formatISO, subDays } from "date-fns";
-import Filter from "bad-words";
 
 document.addEventListener("DOMContentLoaded", function () {
   const dobInput = document.getElementById("dob");
@@ -121,12 +127,21 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 export default {
+  data() {
+    return {
+      showPassword: false,
+    };
+  },
   methods: {
+    isValidPassword(password) {
+      const regex =
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      return regex.test(password);
+    },
     validateInput(input) {
       const regex = /^[a-zA-Z]+$/; // This regex allows only alphabets
-      let filter = new Filter();
 
-      if (!regex.test(input) || filter.isProfane(input)) {
+      if (!regex.test(input)) {
         return false;
       }
       return true;
@@ -135,13 +150,27 @@ export default {
       const name = document.getElementById("name").value;
       const surname = document.getElementById("surname").value;
       const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      const email = document.getElementById("email").value;
 
-      if (
-        !this.validateInput(name) ||
-        !this.validateInput(surname) ||
-        !this.validateInput(username)
-      ) {
-        alert("Invalid input. Please enter appropriate and valid information.");
+      if (!this.validateInput(name)) {
+        alert(
+          "Invalid input in Name field. Please enter appropriate and valid information."
+        );
+        return;
+      }
+
+      if (!this.validateInput(surname)) {
+        alert(
+          "Invalid input in Surname field. Please enter appropriate and valid information."
+        );
+        return;
+      }
+
+      if (!this.isValidPassword(password)) {
+        alert(
+          "Invalid input in Password field. Please enter appropriate and valid information."
+        );
         return;
       }
 
@@ -149,20 +178,22 @@ export default {
         name: name,
         surname: surname,
         username: username,
-        password: document.getElementById("password").value,
-        email: document.getElementById("email").value,
+        password: password,
+        email: email,
       };
 
       try {
-        const response = await fetch("http://localhost:8081/signup", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(userData),
-        });
+        const response = await axios.post(
+          "http://localhost:8081/api/signup",
+          userData,
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
-        if (response.ok) {
+        if (response.status >= 200 && response.status < 300) {
           alert("Signup successful!");
           // Redirect the user or clear the form here
         } else {
