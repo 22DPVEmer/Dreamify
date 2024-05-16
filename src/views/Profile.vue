@@ -108,8 +108,10 @@ onMounted(async () => {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
+
     dreams.value = dreamsResponse.data; // Assign the dreams to the dreams ref
     console.log("Dreams:", dreams.value);
+    console.log("User:", user.value);
   } catch (error) {
     console.error(error);
   } finally {
