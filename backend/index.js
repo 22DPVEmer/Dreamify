@@ -1,31 +1,282 @@
 const express = require("express");
 const mysql = require("mysql");
+const path = require("path");
+const multer = require("multer");
+const fs = require("fs");
+const cors = require("cors");
+const mysql2 = require("mysql2/promise");
+const bodyParser = require("body-parser");
+const crypto = require("crypto");
+// Make sure to require bcrypt if you use it for password hashing
 
 const app = express();
 const port = 8081; // Changed port to 8081 as it's the listening port for the express server
 
-const cors = require("cors");
 app.use(cors());
 app.use(express.json()); // Add this line to parse JSON bodies
 
-// Create MySQL connection
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "dreamify",
+// Set up storage for Multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, "uploads/avatars")); // Directory to store images
+  },
+  filename: function (req, file, cb) {
+    cb(null, `${Date.now()}-${file.originalname}`); // Unique filename
+  },
+});
+const upload = multer({ storage: storage });
+
+let pool; // Declare pool in the higher scope
+
+// Function to create the database if it doesn't exist
+async function createDatabase() {
+  const connection = await mysql2.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "",
+  });
+
+  await connection.query(`CREATE DATABASE IF NOT EXISTS dreamify`);
+  await connection.end();
+}
+
+// Function to initialize the database with tables and data
+async function initializeDatabase(pool) {
+  try {
+    const sqlStatements = [
+      `CREATE TABLE IF NOT EXISTS categories (
+        id int primary key auto_increment,
+        name varchar(255) not null
+      )`,
+      `CREATE TABLE IF NOT EXISTS users (
+        id int NOT NULL AUTO_INCREMENT,
+        name varchar(30) NOT NULL,
+        surname varchar(255) NOT NULL,
+        email varchar(255) NOT NULL,
+        password varchar(255) NOT NULL,
+        username varchar(50) DEFAULT NULL,
+        IsAdmin tinyint(1) NOT NULL DEFAULT '0',
+        resetToken varchar(50) DEFAULT NULL,
+        avatar_url varchar(255) DEFAULT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY email (email),
+        UNIQUE KEY username (username)
+      )`,
+      `CREATE TABLE IF NOT EXISTS dream_entries (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        date DATE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        user_id INT,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        lucid BOOLEAN DEFAULT FALSE,
+        category INT DEFAULT NULL,
+        FOREIGN KEY (category) REFERENCES categories(id) ON DELETE SET NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS shared_dreams (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        dream_id INT,
+        FOREIGN KEY (dream_id) REFERENCES dream_entries(id) ON DELETE CASCADE,
+        UNIQUE (dream_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS dream_likes (
+        Userid INT,
+        FOREIGN KEY (Userid) REFERENCES users(id) ON DELETE CASCADE,
+        DreamId INT,
+        FOREIGN KEY (DreamId) REFERENCES shared_dreams(id) ON DELETE CASCADE,
+        disliked BOOLEAN DEFAULT FALSE,
+        PRIMARY KEY (Userid, DreamId)
+      )`,
+      `CREATE TABLE IF NOT EXISTS comments (
+        ID INT AUTO_INCREMENT PRIMARY KEY,
+        Dream_id INT,
+        User_id INT,
+        Contents TEXT,
+        Date_posted DATE,
+        likes INT DEFAULT 0,
+        FOREIGN KEY (Dream_id) REFERENCES shared_dreams(id) ON DELETE CASCADE,
+        FOREIGN KEY (User_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS comment_likes (
+        User_id INT,
+        Comment_id INT,
+        FOREIGN KEY (User_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (Comment_id) REFERENCES comments(ID) ON DELETE CASCADE,
+        disliked BOOLEAN DEFAULT FALSE,
+        PRIMARY KEY (User_id, Comment_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS tags (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tag_name VARCHAR(255) NOT NULL,
+        user_id INT,
+        dream_id INT,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (dream_id) REFERENCES dream_entries(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS replies (
+        ID INT AUTO_INCREMENT PRIMARY KEY,
+        Comment_id INT,
+        User_id INT,
+        Contents TEXT,
+        Date_posted DATE,
+        likes INT DEFAULT 0,
+        FOREIGN KEY (Comment_id) REFERENCES comments(ID) ON DELETE CASCADE,
+        FOREIGN KEY (User_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS reply_likes (
+        User_id INT,
+        Reply_id INT,
+        FOREIGN KEY (User_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (Reply_id) REFERENCES replies(ID) ON DELETE CASCADE,
+        disliked BOOLEAN DEFAULT FALSE,
+        PRIMARY KEY (User_id, Reply_id)
+      )`,
+      `
+      INSERT INTO categories (id, name) VALUES 
+      (1, 'Adventure & Exploration'),
+      (2, 'Nightmares & Fears'),
+      (3, 'Relationships & Family'),
+      (4, 'Work & Career'),
+      (5, 'Learning & Discovery'),
+      (6, 'Fantasy & Mythology'),
+      (7, 'Animals & Nature'),
+      (8, 'Health & Healing'),
+      (9, 'Mystical & Spiritual'),
+      (10, 'Celebration & Joy'),
+      (11, 'Conflict & Resolution'),
+      (12, 'Flying & Freedom'),
+      (13, 'Chasing & Escaping'),
+      (14, 'Lost & Found')
+      ON DUPLICATE KEY UPDATE name = VALUES(name);
+    `,
+    ];
+
+    const connection = await pool.getConnection();
+    try {
+      for (const sql of sqlStatements) {
+        await connection.query(sql);
+      }
+      console.log("All tables created or already exist");
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("Error initializing database:", error);
+  }
+}
+
+// Server setup and initialization
+(async () => {
+  try {
+    // Create the database if it doesn't exist
+    await createDatabase();
+
+    // Create a connection pool for promise-based MySQL queries
+    pool = mysql2.createPool({
+      host: "localhost",
+      user: "root",
+      password: "",
+      database: "dreamify",
+    });
+
+    // Initialize the database with tables and data
+    await initializeDatabase(pool);
+
+    // Start the server
+    app.listen(port, () => {
+      console.log(`Server is running at port ${port}`);
+    });
+  } catch (error) {
+    console.error("Error setting up the server:", error);
+  }
+})();
+
+async function showCreateTable() {
+  const connection = await mysql2.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "dreamify",
+  });
+
+  try {
+    const [rows] = await connection.query("SHOW CREATE TABLE `categories`");
+    if (rows && rows.length > 0) {
+      console.log(rows[0]["Create Table"]);
+    } else {
+      console.log("No rows returned");
+    }
+  } catch (err) {
+    console.error(err);
+  } finally {
+    await connection.end();
+  }
+}
+
+showCreateTable();
+
+app.use(bodyParser.json({ limit: "10mb" }));
+
+// Upload avatar code
+app.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
+  const userId = req.body.userId;
+  let avatarPath;
+
+  if (req.file) {
+    avatarPath = `/uploads/avatars/${req.file.filename}`;
+  } else if (req.body.image) {
+    // Handle Base64 image data
+    const base64Data = req.body.image.replace(
+      /^data:image\/(png|jpeg);base64,/,
+      ""
+    );
+    const extension = req.body.image.split(";")[0].split("/")[1];
+    avatarPath = `/uploads/avatars/${Date.now()}.${extension}`;
+    fs.writeFileSync(path.join(__dirname, avatarPath), base64Data, "base64");
+  } else {
+    return res
+      .status(400)
+      .json({ success: false, message: "No image provided" });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    try {
+      // Fetch the current avatar URL for the user
+      const [rows] = await connection.execute(
+        "SELECT avatar_url FROM users WHERE id = ?",
+        [userId]
+      );
+      const currentAvatarPath = rows.length > 0 ? rows[0].avatar_url : null;
+
+      // Update the user's avatar URL
+      await connection.execute("UPDATE users SET avatar_url = ? WHERE id = ?", [
+        avatarPath,
+        userId,
+      ]);
+
+      // Delete the previous avatar file if it exists and is not the default avatar
+      if (currentAvatarPath && currentAvatarPath !== avatarPath) {
+        const currentAvatarFullPath = path.join(__dirname, currentAvatarPath);
+        if (fs.existsSync(currentAvatarFullPath)) {
+          fs.unlinkSync(currentAvatarFullPath);
+        }
+      }
+
+      res.json({ success: true, avatarPath });
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("Error updating user avatar:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update avatar" });
+  }
 });
 
-//api
-const mysql2 = require("mysql2/promise");
-
-// Create a connection pool
-const pool = mysql2.createPool({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "dreamify",
-});
+// Serve static files
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Get all user information
 app.get("/api/users/:userId", async (req, res) => {
   const token = req.headers.authorization.split(" ")[1];
@@ -211,76 +462,6 @@ app.delete("/api/dreams/:id/delete", async (req, res) => {
     res.status(500).send({ error: "Server error" });
   }
 });
-
-// Connect to the dimport axios from 'axios';atabase
-db.connect((err) => {
-  if (err) {
-    throw err;
-  }
-  console.log("MySQL connected");
-  const sql = `
-    CREATE TABLE IF NOT EXISTS users (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      surname VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL UNIQUE,
-      password VARCHAR(255) NOT NULL
-    )`;
-
-  db.query(sql, (err, result) => {
-    if (err) {
-      throw err;
-    }
-    console.log("Table 'users' created or already exists");
-  });
-
-  // Create dream_entries table with foreign key user_id
-  const sqlDreamEntries = `
-  CREATE TABLE IF NOT EXISTS dream_entries (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    date DATE,
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    user_id INT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  )`;
-
-  db.query(sqlDreamEntries, (err, result) => {
-    if (err) {
-      throw err;
-    }
-    console.log("Table 'dream_entries' created or already exists");
-  });
-});
-
-app.listen(port, () => {
-  console.log(`Server is running at port ${port}`);
-});
-/*
-app.post("/api/signup", async (req, res) => {
-  const { name, surname, username, password, email } = req.body;
-  let haspassword = generateSecretKey();
-  const query = `
-    INSERT INTO users (name, surname, username, password, email)
-    VALUES (?, ?, ?, ?, ?)
-  `;
-
-  try {
-    const result = await pool.query(query, [
-      name,
-      surname,
-      username,
-      password,
-      email,
-    ]);
-    res.status(201).json(result[0]); // Send back the inserted user data
-  } catch (error) {
-    console.error("Error executing query", error.stack);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-*/
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 app.post("/api/signup", async (req, res) => {
@@ -320,63 +501,7 @@ app.post("/api/signup", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-/*
-app.post("/api/signup", async (req, res) => {
-  const { name, surname, username, password, email } = req.body;
 
-  // Validate input
-  const regex = /^[a-zA-Z]+$/; // This regex allows only alphabets
-  if (!regex.test(name) || !regex.test(surname) || !regex.test(username)) {
-    return res
-      .status(400)
-      .json({ error: "Name, surname and username can only contain alphabets" });
-  }
-
-  const passwordRegex =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  if (!passwordRegex.test(password)) {
-    return res.status(400).json({
-      error:
-        "Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long",
-    });
-  }
-
-  const query = `
-    INSERT INTO users (name, surname, username, password, email)
-    VALUES (?, ?, ?, ?, ?)
-  `;
-
-  try {
-    const result = await pool.query(query, [
-      name,
-      surname,
-      username,
-      password,
-      email,
-    ]);
-    res.status(201).json(result[0]); // Send back the inserted user data
-  } catch (error) {
-    console.error("Error executing query", error.stack);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-//User REgistartion
-//User Registration
-/*
-app.post("/api/signup", (req, res) => {
-  console.log(req.body);
-  const { name, surname, email, username, password } = req.body;
-  const sql =
-    "INSERT INTO users (name, surname, email, username, password) VALUES (?, ?, ?, ?, ?)";
-  db.query(sql, [name, surname, email, username, password], (err, result) => {
-    if (err) {
-      res.status(400).send("Error registering user");
-    } else {
-      res.status(200).send("User registered successfully");
-    }
-  });
-});
-*/
 //Shared dreams creation code
 app.post("/api/dreams/:dreamId/share", async (req, res) => {
   const dreamId = req.params.dreamId;
@@ -425,36 +550,48 @@ app.get("/api/shared-dreams", async (req, res) => {
 
 // User Login
 
-app.post("/login", (req, res) => {
+app.post("/login", async (req, res) => {
+  console.log("Login endpoint hit");
   const { email, password } = req.body;
+  console.log(`Received email: ${email}`);
 
   const sql = "SELECT * FROM users WHERE email = ?";
-  db.query(sql, [email], (err, result) => {
-    if (err) {
-      res.status(500).send("Error while logging in");
-    } else {
-      if (result.length > 0) {
-        const user = result[0];
-        // Compare the password with the hashed password stored in the database
-        const match = bcrypt.compareSync(password, user.password);
 
-        if (match) {
-          let token = generateToken(user);
+  try {
+    const [result] = await pool.query(sql, [email]);
+    console.log("Query executed, result:", result);
 
-          res
-            .status(200)
-            .json({ message: "Login successful", user: user, token: token });
-        } else {
-          // Password does not match
-          res.status(401).send("Invalid email or password");
-        }
+    if (result.length > 0) {
+      const user = result[0];
+      console.log("User found:", user);
+
+      // Compare the password with the hashed password stored in the database
+      const match = bcrypt.compareSync(password, user.password);
+      console.log("Password match:", match);
+
+      if (match) {
+        let token = generateToken(user);
+        console.log("Token generated:", token);
+
+        res
+          .status(200)
+          .json({ message: "Login successful", user: user, token: token });
       } else {
-        // User not found
+        // Password does not match
+        console.log("Password does not match");
         res.status(401).send("Invalid email or password");
       }
+    } else {
+      // User not found
+      console.log("User not found");
+      res.status(401).send("Invalid email or password");
     }
-  });
+  } catch (err) {
+    console.error("Error while logging in:", err);
+    res.status(500).send("Error while logging in");
+  }
 });
+
 // Dream entry code
 
 app.post("/user", (req, res) => {
@@ -532,8 +669,6 @@ function generateToken(user) {
   return token;
 }
 
-const crypto = require("crypto");
-
 function generateSecretKey() {
   return crypto.randomBytes(32).toString("hex"); // Generate a random 256-bit (32-byte) value and convert it to hexadecimal string
 }
@@ -542,27 +677,6 @@ const secretKey = generateSecretKey();
 console.log("Generated Secret Key:", secretKey);
 
 // Code for dreamboard
-
-app.post("/api/create-shared-dreams-table", async (req, res) => {
-  // Query the database
-  pool
-    .query(
-      `
-      CREATE TABLE shared_dreams (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        dream_id INT,
-        FOREIGN KEY (dream_id) REFERENCES dream_entries(id)
-      )
-    `
-    )
-    .then(([rows, fields]) => {
-      res.json({ message: "Shared dreams table created successfully" });
-    })
-    .catch((err) => {
-      console.error(err);
-      res.status(500).json({ message: "Server error" });
-    });
-});
 
 // code for unlike
 app.post("/api/shared-dreams/:id/:userid/unlike", async (req, res) => {
@@ -927,82 +1041,92 @@ const nodemailer = require("nodemailer");
 app.post("/forgot-password", (req, res) => {
   const { email } = req.body;
   const sql = "SELECT * FROM users WHERE email = ?";
-  console.log(email);
-  db.query(sql, [email], async (err, result) => {
-    if (err) {
-      res.status(500).json({ message: "Error while resetting password" });
-    } else {
-      if (result.length > 0) {
-        // Generate a password reset token
-        const resetToken = crypto.randomBytes(20).toString("hex");
+  console.log("Received email for password reset:", email);
 
-        // Save the reset token to the database
+  pool
+    .query(sql, [email])
+    .then(([result, fields]) => {
+      console.log("SQL query result:", result);
+
+      if (result.length > 0) {
+        const resetToken = crypto.randomBytes(20).toString("hex");
+        console.log("Generated reset token:", resetToken);
+
         const sqlUpdate = "UPDATE users SET resetToken = ? WHERE email = ?";
-        db.query(sqlUpdate, [resetToken, email], async (err, result) => {
-          // Add async here
-          if (err) {
-            res.status(500).json({ message: "Error while saving reset token" });
-          } else {
-            // Create a transporter
+        return pool
+          .query(sqlUpdate, [resetToken, email])
+          .then(([result, fields]) => {
+            console.log("Reset token saved to database:", result);
+
             let transporter = nodemailer.createTransport({
-              service: "gmail", // replace with your email service
+              service: "gmail",
               auth: {
-                user: "viestursemerbergs@gmail.com", // replace with your email
-                pass: "hnik xldy imdc qaav", // replace with your email password
+                user: "viestursemerbergs@gmail.com",
+                pass: "hnik xldy imdc qaav",
               },
             });
 
-            // Send the email
-            try {
-              let info = await transporter.sendMail({
-                // Now await is allowed here
-                from: '"Password Reset" <viestursemerbergs@gmail.com>', // replace with your email
-                to: email,
-                subject: "Password Reset",
-                text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\nhttp://localhost:5173/reset-password/${resetToken}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n`,
-              });
-
-              res
-                .status(200)
-                .json({ message: "Password reset link sent to email" });
-            } catch (err) {
-              res.status(500).json({ message: "Error while sending email" });
-            }
-          }
-        });
+            return transporter.sendMail({
+              from: '"Password Reset" <viestursemerbergs@gmail.com>',
+              to: email,
+              subject: "Password Reset",
+              text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\nPlease click on the following link, or paste this into your browser to complete the process:\n\nhttp://localhost:5173/reset-password/${resetToken}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.\n`,
+            });
+          });
       } else {
+        console.log("User not found with email:", email);
         res.status(404).json({ message: "User not found" });
+        return Promise.reject("User not found");
       }
-    }
-  });
+    })
+    .then((info) => {
+      console.log("Email sent:", info.response);
+      res.status(200).json({ message: "Password reset link sent to email" });
+    })
+    .catch((err) => {
+      if (err !== "User not found") {
+        console.error("Error while processing forgot password request:", err);
+        res
+          .status(500)
+          .json({ message: "Error while processing forgot password request" });
+      }
+    });
 });
 
 app.post("/reset-password/:token", (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
 
-  // Find the user with the reset token
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({
+      error:
+        "Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long",
+    });
+  }
+
   const sql = "SELECT * FROM users WHERE resetToken = ?";
-  db.query(sql, [token], (err, result) => {
-    if (err) {
-      res.status(500).json({ message: "Error while resetting password" });
-    } else {
+  pool
+    .query(sql, [token])
+    .then(([result]) => {
       if (result.length > 0) {
-        // Update the user's password and nullify the reset token in the database
+        const hashedPassword = bcrypt.hashSync(password, saltRounds);
         const sqlUpdate =
           "UPDATE users SET password = ?, resetToken = NULL WHERE resetToken = ?";
-        db.query(sqlUpdate, [password, token], (err, result) => {
-          if (err) {
-            res.status(500).json({ message: "Error while updating password" });
-          } else {
-            res.status(200).json({ message: "Password updated successfully" });
-          }
-        });
+        return pool.query(sqlUpdate, [hashedPassword, token]);
       } else {
         res.status(404).json({ message: "Invalid reset token" });
+        return Promise.reject("Invalid reset token");
       }
-    }
-  });
+    })
+    .then(() => {
+      res.status(200).json({ message: "Password updated successfully" });
+    })
+    .catch((err) => {
+      console.error("Error while resetting password:", err);
+      res.status(500).json({ message: "Error while resetting password" });
+    });
 });
 
 // Create the endpoint for adding comments
@@ -1014,7 +1138,7 @@ app.post("/api/shared-dreams/comments/:userId", (req, res) => {
 
   const sql =
     "INSERT INTO comments (UserId, Contents,Dream_id,Date_posted,Likes) VALUES (?, ?, ?,?,?)";
-  db.query(sql, [userId, text, dreamId, date, likes], (err, result) => {
+  pool.query(sql, [userId, text, dreamId, date, likes], (err, result) => {
     if (err) {
       console.error(err);
       res.status(500).json({ message: "Error inserting comment" });
@@ -1398,4 +1522,33 @@ app.get("/api/users/:commentId/comments", async (req, res) => {
       console.error(err);
       res.status(500).json({ message: "Server error" });
     });
+});
+
+app.put("/api/users/settings/:id", (req, res) => {
+  console.log("Settings endpoint hit");
+
+  const { id } = req.params;
+  const { name, surname, username } = req.body;
+
+  const sql =
+    "UPDATE users SET name = ?, surname = ?,username = ? WHERE id = ?";
+  pool.query(sql, [name, surname, username, id], (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error updating user" });
+    } else {
+      res.status(200).json({ message: "User updated successfully" });
+    }
+  });
+});
+
+app.delete("/api/userDelete/:id", (req, res) => {
+  const { id } = req.params;
+  const sql = "DELETE FROM users WHERE id = ?";
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error deleting user" });
+    } else {
+      res.status(200).json({ message: "User deleted successfully" });
+    }
+  });
 });
