@@ -12,6 +12,13 @@
     <div class="d-flex justify-content-end mx-3 pe-5">
       <RouterLink
         v-if="isLoggedIn"
+        to="/profile"
+        class="router text-white fs-4 mx-3 text-decoration-none"
+      >
+        <div :class="{ 'text-dark': selectedLink === '/profile' }">Journal</div>
+      </RouterLink>
+      <RouterLink
+        v-if="isLoggedIn"
         to="/settings"
         class="router text-white fs-4 mx-3 text-decoration-none"
       >
@@ -24,7 +31,7 @@
         to="/user"
         class="router text-white fs-4 mx-3 text-decoration-none"
       >
-        <div :class="{ 'text-dark': selectedLink === '/user' }">Journal</div>
+        <div :class="{ 'text-dark': selectedLink === '/user' }">Dream</div>
       </RouterLink>
       <RouterLink
         v-if="!isLoggedIn"

@@ -1,31 +1,16 @@
 <template>
   <div class="container">
-    <div class="navbar fixed-bottom w-100">
-      <RouterLink to="/dreams">
-        <div class="">
-          <font-awesome-icon
-            :icon="['fas', 'book-journal-whills']"
-            class="fa-3x text-dark"
-          /></div
-      ></RouterLink>
-
-      <div class="">
-        <button
-          type="button"
-          class="btn btn-dark btn-lg rounded-pill"
-          data-bs-toggle="modal"
-          data-bs-target="#dreamEntryModal"
-        >
-          <font-awesome-icon :icon="['fas', 'plus']" class="fa-2x text-info" />
-        </button>
-      </div>
-      <RouterLink to="/profile">
-        <div class="profile">
-          <font-awesome-icon
-            icon="fa-solid fa-user "
-            class="fa-3x text-dark"
-          /></div
-      ></RouterLink>
+    <div
+      class="navbar fixed-bottom w-100 d-flex justify-content-center align-items-center"
+    >
+      <button
+        type="button"
+        class="btn btn-dark btn-lg rounded-pill"
+        data-bs-toggle="modal"
+        data-bs-target="#dreamEntryModal"
+      >
+        <font-awesome-icon :icon="['fas', 'plus']" class="fa-2x text-info" />
+      </button>
     </div>
   </div>
   <DreamInfo />
