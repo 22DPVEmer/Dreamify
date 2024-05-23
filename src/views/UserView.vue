@@ -2,10 +2,6 @@
 import Calendar from "../components/Calendar.vue";
 import SearchBar from "../components/SearchBar.vue";
 import NavJournal from "../components/NavJournal.vue";
-
-/*<Calendar/>   
-<AddNote/> 
-*/
 </script>
 
 <template>

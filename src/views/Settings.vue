@@ -31,14 +31,7 @@
       <div class="col-md-8">
         <h1 class="text-white mb-4">Settings</h1>
         <!-- Username Input -->
-        <div class="mb-3">
-          <h2 class="text-white">Username</h2>
-          <input
-            type="text"
-            class="form-control bg-dark text-white"
-            v-model="user.username"
-          />
-        </div>
+
         <!-- Name Input -->
         <div class="mb-3">
           <h2 class="text-white">Name</h2>
@@ -316,7 +309,7 @@ onMounted(async () => {
 
 <style scoped>
 .root {
-  margin-top: 150px;
+  margin-top: 100px;
 }
 
 .avatar-container {

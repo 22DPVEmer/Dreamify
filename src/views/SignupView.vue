@@ -1,6 +1,6 @@
 <template>
   <!-- Signup - Dark Theme -->
-  <div class="bg-dark py-3 py-md-5 mt-5">
+  <div class="py-3 py-md-5 mt-5">
     <div class="container">
       <div class="row justify-content-md-center">
         <div class="col-12 col-md-11 col-lg-8 col-xl-7 col-xxl-6">
@@ -118,6 +118,7 @@
 <script>
 import axios from "axios";
 import { formatISO, subDays } from "date-fns";
+import store from "../store/store.js";
 
 document.addEventListener("DOMContentLoaded", function () {
   const dobInput = document.getElementById("dob");
@@ -195,12 +196,19 @@ export default {
 
         if (response.status >= 200 && response.status < 300) {
           alert("Signup successful!");
-          // Redirect the user or clear the form here
+
+          // Store the token in local storage
+          localStorage.setItem("token", response.data.token);
+          store.dispatch("login");
+
+          // Redirect to user view
+          this.$router.push("/user");
         } else {
           alert("Signup failed!");
         }
       } catch (error) {
         console.error("Error:", error);
+        alert("Signup failed due to an error!");
       }
     },
   },

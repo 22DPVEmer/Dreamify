@@ -1,6 +1,5 @@
-// store.js
 import { createStore } from "vuex";
-import { jwtDecode } from "jwt-decode";
+import { jwtDecode } from "jwt-decode"; // Fix the import
 
 export default createStore({
   state: {

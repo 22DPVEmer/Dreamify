@@ -38,7 +38,9 @@
         class="router text-white fs-4 mx-3 text-decoration-none"
         to="/dreamboard"
       >
-        <div :class="{ 'text-dark': selectedLink === '/' }">Dreamboard</div>
+        <div :class="{ 'text-dark': selectedLink === '/dreamboard' }">
+          Dreamboard
+        </div>
       </RouterLink>
       <div class="log text-white fs-4 mx-3 text-decoration-none">
         <div
@@ -60,7 +62,7 @@ import store from "../store/store.js";
 const router = useRouter();
 const selectedLink = ref(router.currentRoute.value.path);
 
-const isLoggedIn = computed(() => store.state.isLoggedIn);
+const isLoggedIn = computed(() => store.getters.isLoggedIn);
 
 watch(
   () => router.currentRoute.value,
@@ -68,18 +70,12 @@ watch(
     selectedLink.value = newRoute.path;
   }
 );
-const linkTo = computed(() => (isLoggedIn.value ? "/" : "/login"));
 
 const toggleLogin = () => {
-  console.log("isLoggedIn:", isLoggedIn.value);
   if (isLoggedIn.value) {
     store.dispatch("logout");
-    console.log("Logging out...");
-    console.log(linkTo.value);
     router.push("/");
   } else {
-    console.log("Logging in...");
-    console.log(linkTo.value);
     router.push("/login");
   }
 };

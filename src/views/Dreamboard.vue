@@ -1,14 +1,17 @@
 <template>
-  <div class="container" style="margin-top: 200px; color: white">
+  <div class="container">
     <div class="d-flex justify-content-between align-items-center">
-      <!-- Add this input field for the search bar -->
-
       <input
         type="text"
         class="form-control me-5"
         placeholder="Search by name..."
         v-model="searchQuery"
-        style="width: 200px"
+      />
+      <input
+        type="text"
+        class="form-control me-5"
+        placeholder="Search by tags..."
+        v-model="searchQuery"
       />
       <h1
         class="my-4 me-5 text-white"
@@ -44,7 +47,6 @@
       v-for="dream in filteredDreams"
       :key="dream.Id"
       class="card text-white bg-dark mb-3"
-      style="color: white; background-color: black"
     >
       <div class="card-body">
         <p class="card-text text-white">{{ dream.username }}</p>
@@ -102,18 +104,17 @@
 <script setup>
 import { ref, onMounted, watch, computed } from "vue";
 import axios from "axios";
-import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
+import { jwtDecode } from "jwt-decode";
 import Comments from "../components/Comments.vue";
 
-//const hasDisliked = ref(false);
 const showComments = ref(false);
 const searchQuery = ref("");
 const comments = ref([]);
 const sharedDreams = ref([]);
 const loading = ref(true);
-//for the token so that the user can like the dream
+
 const token = localStorage.getItem("token");
-const decodedToken = jwtDecode(token); // decode without verification
+const decodedToken = jwtDecode(token);
 const userId = decodedToken.userId;
 
 const selected = ref(null);
@@ -130,16 +131,13 @@ onMounted(async () => {
   try {
     const response = await axios.get("http://localhost:8081/api/shared-dreams");
     if (response.data && Array.isArray(response.data)) {
-      // Add a likeStatus property to each dream
       sharedDreams.value = response.data.map((dream) => ({
         ...dream,
         likeStatus: "neutral",
         comments: [],
         showComments: false,
       }));
-      console.log("Shared dreams:", sharedDreams.value);
 
-      // Check if the user has liked each dream
       for (const dream of sharedDreams.value) {
         try {
           const response = await axios.get(
@@ -156,15 +154,12 @@ onMounted(async () => {
           console.error("Error fetching like status:", error);
         }
 
-        // Doesnt work yet
-        // Fetch comments for each dream
-
         try {
           const commentsResponse = await axios.get(
             `http://localhost:8081/api/shared-dreams/${dream.Id}/comments`
           );
 
-          dream.comments = [...comments.value, ...commentsResponse.data]; // Append new comments
+          dream.comments = [...comments.value, ...commentsResponse.data];
         } catch (error) {
           console.error("Error fetching comments:", error);
         }
@@ -178,69 +173,59 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
 const increaseLikes = async (dream) => {
-  console.log("increaseLikes called with dream:", dream);
   try {
     if (dream.likeStatus === "liked") {
-      console.log("Dream is already liked. Unliking...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/unlike`
       );
       dream.Likes--;
       dream.likeStatus = "neutral";
     } else if (dream.likeStatus === "disliked") {
-      console.log("Dream was disliked. Liking from dislike...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/likeFromDislike`
       );
       dream.Likes += 2;
       dream.likeStatus = "liked";
     } else {
-      console.log("Dream is not liked. Liking...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/like`
       );
       dream.Likes++;
       dream.likeStatus = "liked";
     }
-    console.log("Final dream state:", dream);
   } catch (error) {
     console.error("Error checking likes:", error);
   }
 };
-// code for decreasing the likes
+
 const decreaseLikes = async (dream) => {
-  console.log("decreaseLikes called with dream:", dream);
   try {
     if (dream.likeStatus === "disliked") {
-      console.log("Dream is already disliked. Undisliking...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/undislike`
       );
       dream.Likes++;
       dream.likeStatus = "neutral";
     } else if (dream.likeStatus === "liked") {
-      console.log("Dream was liked. Disliking from like...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/dislikeFromLike`
       );
       dream.Likes -= 2;
       dream.likeStatus = "disliked";
     } else {
-      console.log("Dream is not disliked. Disliking...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/dislike`
       );
       dream.Likes--;
       dream.likeStatus = "disliked";
     }
-    console.log("Final dream state:", dream);
   } catch (error) {
     console.error("Error checking dislikes:", error);
   }
 };
 
-/// for sortng the dreams
 const filterDreams = () => {
   if (selected.value === "New") {
     sharedDreams.value.sort((a, b) => new Date(b.Date) - new Date(a.Date));
@@ -258,6 +243,55 @@ const filterDreams = () => {
 watch(selected, filterDreams);
 </script>
 
-<style scoped></style>
+<style scoped>
+/* Base styles */
+.container {
+  margin-top: 200px;
+  color: white;
+}
 
-Try using userid
+.card {
+  color: white;
+  background-color: black;
+}
+
+/* Styles for larger screens */
+@media (min-width: 768px) {
+  .d-flex {
+    align-items: center;
+  }
+
+  .form-control {
+    width: 200px;
+  }
+
+  .my-4 {
+    margin: 2rem 0;
+  }
+}
+
+/* Styles for mobile devices */
+@media (max-width: 767px) {
+  .container {
+    margin-top: 100px;
+    padding: 10px;
+  }
+
+  .d-flex {
+    align-items: flex-start;
+  }
+
+  .form-control {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .my-4 {
+    margin: 1rem 0;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+}
+</style>

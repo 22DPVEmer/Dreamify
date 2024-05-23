@@ -4,44 +4,49 @@
       <input v-model="newComment" type="text" placeholder="Add a comment..." />
       <button @click="addComment">Submit</button>
     </div>
-    <div v-for="comment in comments" :key="comment.ID">
-      <h3>{{ comment.author }}</h3>
-      <p class="text-white">{{ comment.Contents }}</p>
-      <div class="d-flex align-items-center">
-        <button class="btn" @click="increaseLikes(comment)">
-          <font-awesome-icon
-            :icon="['fas', 'thumbs-up']"
-            :style="{
-              color: comment.likeStatus === 'liked' ? '#00ccff' : 'white',
-            }"
-          />
-        </button>
-        <div class="text-white">
-          {{ comment.Likes }}
-        </div>
-        <button class="btn" @click="decreaseLikes(comment)">
-          <font-awesome-icon
-            :icon="['fas', 'thumbs-down']"
-            :style="{
-              color: comment.likeStatus === 'disliked' ? '#00ccff' : 'white',
-            }"
-          />
-        </button>
-        <button class="btn text-white">
-          <font-awesome-icon
-            :icon="['fas', 'message']"
-            :style="{
-              color: 'white',
-            }"
-          />
-          Reply
-        </button>
-        <button class="btn text-white" @click="clicked = !clicked">
-          <font-awesome-icon :icon="['fas', clicked ? 'minus' : 'plus']" />
-        </button>
-        <div v-if="clicked">
-          <input type="text" placeholder="Add a reply..." />
-          <button>Submit</button>
+    <div>
+      <div v-for="comment in comments" :key="comment.ID">
+        <div>
+          <h3>{{ comment.author }}</h3>
+          <div class="d-flex justify-content-between align-items-center">
+            <p class="text-white mb-0">{{ comment.Contents }}</p>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-vertical']"
+              class="ms-auto"
+            />
+          </div>
+
+          <div class="d-flex align-items-center">
+            <button class="btn" @click="increaseLikes(comment)">
+              <font-awesome-icon
+                :icon="['fas', 'thumbs-up']"
+                :style="{
+                  color: comment.likeStatus === 'liked' ? '#00ccff' : 'white',
+                }"
+              />
+            </button>
+            <div class="text-white">
+              {{ comment.Likes }}
+            </div>
+            <button class="btn" @click="decreaseLikes(comment)">
+              <font-awesome-icon
+                :icon="['fas', 'thumbs-down']"
+                :style="{
+                  color:
+                    comment.likeStatus === 'disliked' ? '#00ccff' : 'white',
+                }"
+              />
+            </button>
+            <button class="btn text-white">
+              <font-awesome-icon
+                :icon="['fas', 'message']"
+                :style="{
+                  color: 'white',
+                }"
+              />
+              Reply
+            </button>
+          </div>
         </div>
       </div>
     </div>

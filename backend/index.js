@@ -142,11 +142,8 @@ async function initializeDatabase(pool) {
       (7, 'Animals & Nature'),
       (8, 'Health & Healing'),
       (9, 'Mystical & Spiritual'),
-      (10, 'Celebration & Joy'),
-      (11, 'Conflict & Resolution'),
-      (12, 'Flying & Freedom'),
-      (13, 'Chasing & Escaping'),
-      (14, 'Lost & Found')
+      (10, 'Celebration & Joy')
+
       ON DUPLICATE KEY UPDATE name = VALUES(name);
     `,
     ];
@@ -495,7 +492,9 @@ app.post("/api/signup", async (req, res) => {
     ]);
     const user = result[0];
     let token = generateToken(user);
-    res.status(201).json({ user: user, token: token });
+    res
+      .status(200)
+      .json({ message: "Login successful", user: user, token: token });
   } catch (error) {
     console.error("Error executing query", error.stack);
     res.status(500).json({ error: "Internal server error" });
@@ -594,44 +593,87 @@ app.post("/login", async (req, res) => {
 
 // Dream entry code
 
-app.post("/user", (req, res) => {
-  const { date, title, description, lucid, tags } = req.body;
+app.post("/user", async (req, res) => {
+  const { date, title, description, lucid, tags, category } = req.body;
   const sqlDreamEntries =
-    "INSERT INTO dream_entries (user_id, date, title, description, lucid) VALUES (?, ?, ?, ?, ?)";
+    "INSERT INTO dream_entries (user_id, date, title, description, lucid, category) VALUES (?, ?, ?, ?, ?, ?)";
   const sqlTags =
     "INSERT INTO tags (tag_name, user_id, dream_id) VALUES (?, ?, ?)";
+  const sqlRetrieveDreamId =
+    "SELECT id FROM dream_entries WHERE user_id = ? AND date = ? AND title = ? AND description = ? AND lucid = ? ORDER BY id DESC LIMIT 1";
 
-  // Get user ID from token
-  const token = req.headers.authorization.split(" ")[1];
-  const decodedToken = jwt.verify(token, secretKey);
-  const userId = decodedToken.userId;
+  console.log("Request body:", req.body);
+  console.log("category", category);
 
-  // Insert dream entry
-  db.query(
-    sqlDreamEntries,
-    [userId, date, title, description, lucid],
-    (err, result) => {
-      if (err) {
-        console.log(err);
-        res.status(400).send("Error adding dream");
-      } else {
-        const dreamId = result.insertId;
-
-        // Insert tags
-        tags.forEach((tag) => {
-          db.query(sqlTags, [tag, userId, dreamId], (err, result) => {
-            if (err) {
-              console.log(err);
-              res.status(400).send("Error adding tag");
-            } else {
-              console.log("Tag added successfully");
-            }
-          });
-        });
-      }
+  try {
+    // Get user ID from token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      console.error("Authorization header missing");
+      return res.status(401).send("Authorization header missing");
     }
-  );
+
+    const token = authHeader.split(" ")[1];
+    const decodedToken = jwt.verify(token, secretKey);
+    const userId = decodedToken.userId;
+    console.log("User ID extracted from token:", userId);
+
+    // Ensure tags is an array
+    if (!Array.isArray(tags)) {
+      console.error("Tags should be an array");
+      return res.status(400).send("Tags should be an array");
+    }
+
+    // Insert dream entry
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      await connection.execute(sqlDreamEntries, [
+        userId,
+        date,
+        title,
+        description,
+        lucid,
+        category,
+      ]);
+
+      // Retrieve dreamId based on unique properties
+      const [dreamResult] = await connection.execute(sqlRetrieveDreamId, [
+        userId,
+        date,
+        title,
+        description,
+        lucid,
+      ]);
+      if (dreamResult.length === 0) {
+        throw new Error("Dream entry not found after insertion");
+      }
+      const dreamId = dreamResult[0].id;
+      console.log("Dream entry retrieved successfully, dreamId:", dreamId);
+
+      // Insert tags
+      const tagPromises = tags.map((tag) =>
+        connection.execute(sqlTags, [tag, userId, dreamId])
+      );
+      await Promise.all(tagPromises);
+
+      await connection.commit();
+
+      res.status(200).send("Dream entry and tags added successfully");
+    } catch (err) {
+      await connection.rollback();
+      console.error("Error during database operation:", err);
+      res.status(500).send("Error during database operation");
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("Error processing request:", error);
+    res.status(401).send("Unauthorized");
+  }
 });
+
 // Dream entry saval code
 app.post("/user/save", (req, res) => {
   console.log(req.body);
@@ -646,7 +688,7 @@ app.post("/user/save", (req, res) => {
   console.log("date", dreamId);
   console.log("dream id is", dreamId);
 
-  db.query(
+  pool.query(
     sqlUpdateDreamEntries,
     [date, title, description, lucid, dreamId, userId],
     (err, result) => {
@@ -1549,6 +1591,17 @@ app.delete("/api/userDelete/:id", (req, res) => {
       res.status(500).json({ message: "Error deleting user" });
     } else {
       res.status(200).json({ message: "User deleted successfully" });
+    }
+  });
+});
+
+app.get("/api/dreams/categories", (req, res) => {
+  const sql = "SELECT * FROM categories";
+  pool.query(sql, (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error fetching categories" });
+    } else {
+      res.json(result);
     }
   });
 });
