@@ -62,7 +62,7 @@
                 </div>
                 <div class="col-12">
                   <label for="email" class="form-label text-white">
-                    Email <span class="text-info">*</span>
+                    E-mail <span class="text-info">*</span>
                   </label>
                   <input
                     type="email"
@@ -80,6 +80,61 @@
                   />
                   <div class="text-danger" v-if="validationErrors.email">
                     {{ validationErrors.email }}
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label for="gender" class="form-label text-white">
+                    Gender
+                  </label>
+                  <select
+                    class="form-select bg-dark text-white"
+                    v-model="formData.gender"
+                  >
+                    <option value="FEMALE">FEMALE</option>
+                    <option value="MALE">MALE</option>
+                    <option value="OTHER">OTHER</option>
+                    <option value="NOT DECLARED">NOT DECLARED</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label for="dob" class="form-label text-white">
+                    Date of Birth
+                  </label>
+                  <div class="d-flex gap-2">
+                    <select
+                      class="form-select bg-dark text-white"
+                      v-model="formData.year"
+                      required
+                    >
+                      <option disabled value="">YEAR</option>
+                      <option v-for="year in years" :key="year" :value="year">
+                        {{ year }}
+                      </option>
+                    </select>
+                    <select
+                      class="form-select bg-dark text-white"
+                      v-model="formData.month"
+                      required
+                    >
+                      <option disabled value="">MONTH</option>
+                      <option
+                        v-for="(month, index) in months"
+                        :key="index"
+                        :value="index + 1"
+                      >
+                        {{ month }}
+                      </option>
+                    </select>
+                    <select
+                      class="form-select bg-dark text-white"
+                      v-model="formData.day"
+                      required
+                    >
+                      <option disabled value="">DAY</option>
+                      <option v-for="day in days" :key="day" :value="day">
+                        {{ day }}
+                      </option>
+                    </select>
                   </div>
                 </div>
                 <div class="col-12">
@@ -176,8 +231,31 @@ export default {
         username: "",
         email: "",
         password: "",
+        gender: "",
+        year: "",
+        month: "",
+        day: "",
       },
       validationErrors: {},
+      years: Array.from(
+        { length: 100 },
+        (v, i) => new Date().getFullYear() - i
+      ),
+      months: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ],
+      days: Array.from({ length: 31 }, (v, i) => i + 1),
     };
   },
   methods: {
@@ -202,11 +280,27 @@ export default {
       }
       return errors;
     },
+    formatDate(year, month, day) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+        2,
+        "0"
+      )}`;
+    },
     async submitForm() {
       this.validationErrors = this.validateInput();
 
       if (Object.keys(this.validationErrors).length === 0) {
-        const userData = { ...this.formData };
+        // Combine year, month, day into a single date_of_birth field
+        const date_of_birth = this.formatDate(
+          this.formData.year,
+          this.formData.month,
+          this.formData.day
+        );
+
+        const userData = {
+          ...this.formData,
+          date_of_birth, // Add the combined date_of_birth field
+        };
 
         try {
           const response = await axios.post(
@@ -223,8 +317,10 @@ export default {
             alert("Signup successful!");
 
             // Store the token in local storage
+            console.log("Token:", response.data.token);
             localStorage.setItem("token", response.data.token);
-            store.dispatch("login");
+
+            store.dispatch("login"); // Dispatch login action investigated in the previous chapter
 
             // Redirect to user view
             this.$router.push("/user");

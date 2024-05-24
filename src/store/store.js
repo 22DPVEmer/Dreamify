@@ -3,7 +3,7 @@ import { jwtDecode } from "jwt-decode"; // Fix the import
 
 export default createStore({
   state: {
-    isLoggedIn: !!localStorage.getItem("token"),
+    isLoggedIn: false,
     selectedDreamId: localStorage.getItem("selectedDreamId"), // Get from localStorage
     userId: null, // Add this line
   },

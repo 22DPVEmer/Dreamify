@@ -118,8 +118,9 @@ export default {
 
         if (response.status === 200) {
           console.log(data);
-
+          console.log("Token stored in localStorage.", data.token);
           localStorage.setItem("token", data.token);
+
           store.dispatch("login");
           router.push("/user"); // Use router instance to navigate
         } else {

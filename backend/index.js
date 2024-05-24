@@ -7,13 +7,13 @@ const cors = require("cors");
 const mysql2 = require("mysql2/promise");
 const bodyParser = require("body-parser");
 const crypto = require("crypto");
-// Make sure to require bcrypt if you use it for password hashing
+const moment = require("moment-timezone");
 
 const app = express();
 const port = 8081; // Changed port to 8081 as it's the listening port for the express server
 
 app.use(cors());
-app.use(express.json()); // Add this line to parse JSON bodies
+app.use(express.json());
 
 // Set up storage for Multer
 const storage = multer.diskStorage({
@@ -58,6 +58,10 @@ async function initializeDatabase(pool) {
         IsAdmin tinyint(1) NOT NULL DEFAULT '0',
         resetToken varchar(50) DEFAULT NULL,
         avatar_url varchar(255) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP,
+        country varchar(50) DEFAULT NULL,
+        gender varchar(50) DEFAULT NULL,
         PRIMARY KEY (id),
         UNIQUE KEY email (email),
         UNIQUE KEY username (username)
@@ -462,7 +466,13 @@ app.delete("/api/dreams/:id/delete", async (req, res) => {
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 app.post("/api/signup", async (req, res) => {
-  let { name, surname, username, password, email } = req.body;
+  let { name, surname, username, password, email, date_of_birth, gender } =
+    req.body;
+  let created_at = new Date().toISOString().slice(0, 19).replace("T", " ");
+  console.log(req.body);
+  console.log("date of birth", date_of_birth);
+  console.log("gender", gender);
+
   const regex = /^[a-zA-Z]+$/;
   if (!regex.test(name) || !regex.test(surname)) {
     return res
@@ -479,8 +489,8 @@ app.post("/api/signup", async (req, res) => {
   }
   password = bcrypt.hashSync(password, saltRounds);
   const query = `
-    INSERT INTO users (name, surname, username, password, email)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO users (name, surname, username, password, email, gender, date_of_birth, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
   try {
     const result = await pool.query(query, [
@@ -489,12 +499,24 @@ app.post("/api/signup", async (req, res) => {
       username,
       password,
       email,
+      gender,
+      date_of_birth,
+      created_at,
     ]);
-    const user = result[0];
+
+    // Retrieve the newly created user's ID
+    const userId = result[0].insertId;
+
+    // Query the database to get the user details using the newly created user's ID
+    const [userResult] = await pool.query("SELECT * FROM users WHERE id = ?", [
+      userId,
+    ]);
+    const user = userResult[0];
+
     let token = generateToken(user);
     res
       .status(200)
-      .json({ message: "Login successful", user: user, token: token });
+      .json({ message: "Signup successful", user: user, token: token });
   } catch (error) {
     console.error("Error executing query", error.stack);
     res.status(500).json({ error: "Internal server error" });

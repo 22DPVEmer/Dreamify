@@ -61,6 +61,7 @@
           <div class="statistics bg-dark text-white p-3 ms-md-4 mt-4 mt-md-0">
             <h4>Dreaming Statistics</h4>
             <p><strong>Tracked Dreams:</strong> {{ dreams.length }}</p>
+            <p><strong>Current dream streak:</strong> 0</p>
             <p><strong>Dreams Each Week:</strong> 0</p>
             <p><strong>Is Your Dreamiest Day:</strong> Sunday</p>
             <p>
@@ -114,6 +115,8 @@ const formatMonth = (date) => {
 
 onMounted(async () => {
   const token = localStorage.getItem("token");
+  console.log("Token:", token);
+
   const decodedToken = jwtDecode(token);
   const userId = decodedToken.userId;
 
