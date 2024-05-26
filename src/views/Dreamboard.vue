@@ -65,9 +65,7 @@
                 }"
               />
             </button>
-            <div class="text-white">
-              {{ dream.Likes }}
-            </div>
+            <div class="text-white">{{ dream.Likes }}</div>
 
             <button class="btn" @click="decreaseLikes(dream)">
               <font-awesome-icon
@@ -91,65 +89,60 @@
           </div>
         </div>
       </div>
-
-      <Comments
-        :comments="dream.comments"
-        :showComments="dream.showComments"
-        :dreamId="dream.Id"
-      />
+      <div class="comments-section" v-if="dream.showComments">
+        <Comments
+          :comments="dream.comments"
+          :showComments="dream.showComments"
+          :dreamId="dream.Id"
+          @comment-added="addCommentToDream(dream.Id, $event)"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, reactive, onMounted, watch, computed } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import Comments from "../components/Comments.vue";
 
-const showComments = ref(false);
 const searchQuery = ref("");
-const comments = ref([]);
-const sharedDreams = ref([]);
+const sharedDreams = reactive([]);
 const loading = ref(true);
+const selected = ref("New");
 
 const token = localStorage.getItem("token");
 const decodedToken = jwtDecode(token);
 const userId = decodedToken.userId;
 
-const selected = ref(null);
 const filteredDreams = computed(() => {
   if (!searchQuery.value) {
-    return sharedDreams.value;
+    return sharedDreams;
   }
-  return sharedDreams.value.filter((dream) =>
+  return sharedDreams.filter((dream) =>
     dream.title.toLowerCase().includes(searchQuery.value.toLowerCase())
   );
 });
 
-onMounted(async () => {
+const fetchDreams = async () => {
+  loading.value = true;
   try {
     const response = await axios.get("http://localhost:8081/api/shared-dreams");
     if (response.data && Array.isArray(response.data)) {
-      sharedDreams.value = response.data.map((dream) => ({
+      const dreams = response.data.map((dream) => ({
         ...dream,
         likeStatus: "neutral",
         comments: [],
         showComments: false,
       }));
 
-      for (const dream of sharedDreams.value) {
+      for (const dream of dreams) {
         try {
           const response = await axios.get(
             `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/likeStatus`
           );
-          if (response.data.likeStatus === "liked") {
-            dream.likeStatus = "liked";
-          } else if (response.data.likeStatus === "disliked") {
-            dream.likeStatus = "disliked";
-          } else {
-            dream.likeStatus = "neutral";
-          }
+          dream.likeStatus = response.data.likeStatus || "neutral";
         } catch (error) {
           console.error("Error fetching like status:", error);
         }
@@ -158,12 +151,12 @@ onMounted(async () => {
           const commentsResponse = await axios.get(
             `http://localhost:8081/api/shared-dreams/${dream.Id}/comments`
           );
-
-          dream.comments = [...comments.value, ...commentsResponse.data];
+          dream.comments = commentsResponse.data;
         } catch (error) {
           console.error("Error fetching comments:", error);
         }
       }
+      sharedDreams.push(...dreams);
     } else {
       console.error("Unexpected response data:", response.data);
     }
@@ -172,7 +165,9 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
-});
+};
+
+onMounted(fetchDreams);
 
 const increaseLikes = async (dream) => {
   try {
@@ -195,6 +190,7 @@ const increaseLikes = async (dream) => {
       dream.Likes++;
       dream.likeStatus = "liked";
     }
+    console.log("Updated likes for dream:", dream.Id, "Likes:", dream.Likes);
   } catch (error) {
     console.error("Error checking likes:", error);
   }
@@ -221,22 +217,32 @@ const decreaseLikes = async (dream) => {
       dream.Likes--;
       dream.likeStatus = "disliked";
     }
+    console.log("Updated dislikes for dream:", dream.Id, "Likes:", dream.Likes);
   } catch (error) {
     console.error("Error checking dislikes:", error);
   }
 };
 
+const addCommentToDream = (dreamId, newComment) => {
+  console.log("addCommentToDream called with:", dreamId, newComment);
+  const dream = sharedDreams.find((dream) => dream.Id === dreamId);
+  if (dream) {
+    dream.comments.push(newComment);
+    console.log("Updated dream comments:", dream.comments);
+  }
+};
+
 const filterDreams = () => {
   if (selected.value === "New") {
-    sharedDreams.value.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    sharedDreams.sort((a, b) => new Date(b.Date) - new Date(a.Date));
   } else if (selected.value === "Hot") {
-    sharedDreams.value.sort((a, b) => {
+    sharedDreams.sort((a, b) => {
       const timeA = new Date() - new Date(a.Date);
       const timeB = new Date() - new Date(b.Date);
       return b.Likes / timeB - a.Likes / timeA;
     });
   } else if (selected.value === "Top") {
-    sharedDreams.value.sort((a, b) => b.Likes - a.Likes);
+    sharedDreams.sort((a, b) => b.Likes - a.Likes);
   }
 };
 
@@ -244,6 +250,9 @@ watch(selected, filterDreams);
 </script>
 
 <style scoped>
+.comments-section {
+  margin-left: 50px; /* Adjust the margin as needed */
+}
 /* Base styles */
 .container {
   margin-top: 200px;

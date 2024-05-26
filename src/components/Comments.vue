@@ -2,7 +2,7 @@
   <div v-if="showComments">
     <div>
       <input v-model="newComment" type="text" placeholder="Add a comment..." />
-      <button @click="addComment">Submit</button>
+      <button @click="submitComment">Submit</button>
     </div>
     <div>
       <div v-for="comment in comments" :key="comment.ID">
@@ -15,7 +15,6 @@
               class="ms-auto"
             />
           </div>
-
           <div class="d-flex align-items-center">
             <button class="btn" @click="increaseLikes(comment)">
               <font-awesome-icon
@@ -25,9 +24,7 @@
                 }"
               />
             </button>
-            <div class="text-white">
-              {{ comment.Likes }}
-            </div>
+            <div class="text-white">{{ comment.Likes }}</div>
             <button class="btn" @click="decreaseLikes(comment)">
               <font-awesome-icon
                 :icon="['fas', 'thumbs-down']"
@@ -40,9 +37,7 @@
             <button class="btn text-white">
               <font-awesome-icon
                 :icon="['fas', 'message']"
-                :style="{
-                  color: 'white',
-                }"
+                :style="{ color: 'white' }"
               />
               Reply
             </button>
@@ -54,9 +49,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 import axios from "axios";
-import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
+import { jwtDecode } from "jwt-decode";
 
 const props = defineProps({
   comments: Array,
@@ -64,42 +59,19 @@ const props = defineProps({
   dreamId: Number,
 });
 
+const emit = defineEmits(["comment-added"]);
+
 const newComment = ref("");
 const token = localStorage.getItem("token");
-const decodedToken = jwtDecode(token); // decode without verification
+const decodedToken = jwtDecode(token);
 const userId = decodedToken.userId;
-const clicked = ref(false);
 
-onMounted(async () => {
-  // Iterate over each comment
-  for (const comment of props.comments) {
-    const userResponse = await axios.get(
-      `http://localhost:8081/api/users/${comment.UserID}/comments`
-    );
-    comment.author = userResponse.data.username;
+const submitComment = async () => {
+  console.log("submitComment called with newComment:", newComment.value);
 
-    console.log("User ID:", comment);
+  if (!newComment.value.trim()) return; // Prevent empty comments
 
-    try {
-      const response = await axios.get(
-        `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/${userId}/likeStatus`
-      );
-      if (response.data.likeStatus === "liked") {
-        comment.likeStatus = "liked";
-      } else if (response.data.likeStatus === "disliked") {
-        comment.likeStatus = "disliked";
-      } else {
-        comment.likeStatus = "neutral";
-      }
-    } catch (error) {
-      console.error("Error fetching like status for comment:", error);
-    }
-  }
-});
-const addComment = async () => {
   try {
-    // Get the username of the user
-
     const response = await axios.post(
       `http://localhost:8081/api/shared-dreams/comments/${userId}`,
       {
@@ -113,20 +85,30 @@ const addComment = async () => {
       }
     );
 
-    // Add the new comment to the comments array
-    props.comments.push({
-      author: decodedToken.username, // Replace with the actual username
+    console.log("API response:", response);
+
+    if (!response.data.commentId) {
+      console.error("API response did not contain commentId");
+      return;
+    }
+
+    const newCommentObject = {
+      author: decodedToken.username,
       Contents: newComment.value,
-      Likes: 0, // Initialize likes to 0
-      likeStatus: null, // Initialize likeStatus to null
-      // Add other necessary fields
-    });
+      Likes: 0,
+      likeStatus: "neutral",
+      ID: response.data.commentId,
+      UserID: userId,
+    };
+
+    console.log("Emitting comment-added event with:", newCommentObject);
+    // Emit the new comment to the parent component
+    emit("comment-added", newCommentObject);
 
     // Clear the input field
     newComment.value = "";
   } catch (error) {
-    // Handle error
-    console.error("Error:", error.response.status);
+    console.error("Error:", error);
   }
 };
 
@@ -192,3 +174,6 @@ const decreaseLikes = async (comment) => {
   }
 };
 </script>
+
+need a path for likestatus and likes then replies the the same for replies then
+admin panel and all sorts of filltering bs

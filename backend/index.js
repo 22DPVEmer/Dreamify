@@ -201,7 +201,7 @@ async function showCreateTable() {
   });
 
   try {
-    const [rows] = await connection.query("SHOW CREATE TABLE `categories`");
+    const [rows] = await connection.query("SHOW CREATE TABLE `replies`");
     if (rows && rows.length > 0) {
       console.log(rows[0]["Create Table"]);
     } else {
@@ -560,7 +560,6 @@ app.get("/api/shared-dreams", async (req, res) => {
       `
     )
     .then(([rows, fields]) => {
-      console.log(rows);
       res.json(rows);
     })
     .catch((err) => {
@@ -1091,7 +1090,7 @@ app.get("/api/shared-dreams/:id/comments", (req, res) => {
           .status(404)
           .json({ message: "No comments found for this dream" });
       }
-      console.log("Results is", rows);
+
       res.json(rows);
     })
     .catch((error) => {
@@ -1144,7 +1143,6 @@ app.post("/forgot-password", (req, res) => {
       }
     })
     .then((info) => {
-      console.log("Email sent:", info.response);
       res.status(200).json({ message: "Password reset link sent to email" });
     })
     .catch((err) => {
@@ -1194,22 +1192,34 @@ app.post("/reset-password/:token", (req, res) => {
 });
 
 // Create the endpoint for adding comments
-app.post("/api/shared-dreams/comments/:userId", (req, res) => {
+app.post("/api/shared-dreams/comments/:userId", async (req, res) => {
+  console.log("Add comment endpoint hit");
   const { userId } = req.params;
   const { text, dreamId } = req.body;
   const date = new Date().toISOString().slice(0, 19).replace("T", " "); // Get current date in MySQL datetime format
   const likes = 0;
 
   const sql =
-    "INSERT INTO comments (UserId, Contents,Dream_id,Date_posted,Likes) VALUES (?, ?, ?,?,?)";
-  pool.query(sql, [userId, text, dreamId, date, likes], (err, result) => {
-    if (err) {
-      console.error(err);
-      res.status(500).json({ message: "Error inserting comment" });
-    } else {
-      res.status(200).json({ message: "Comment inserted successfully" });
-    }
-  });
+    "INSERT INTO comments (UserId, Contents, Dream_id, Date_posted, Likes) VALUES (?, ?, ?, ?, ?)";
+
+  try {
+    const [result] = await pool.query(sql, [
+      userId,
+      text,
+      dreamId,
+      date,
+      likes,
+    ]);
+    const commentId = result.insertId;
+
+    console.log("Comment inserted successfully");
+    res
+      .status(200)
+      .json({ message: "Comment inserted successfully", commentId });
+  } catch (err) {
+    console.error("Error inserting comment:", err);
+    res.status(500).json({ message: "Error inserting comment" });
+  }
 });
 
 //dislike comments

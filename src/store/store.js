@@ -1,12 +1,31 @@
 import { createStore } from "vuex";
 import { jwtDecode } from "jwt-decode"; // Fix the import
 
-export default createStore({
-  state: {
-    isLoggedIn: false,
+// Function to get the initial state
+const getInitialState = () => {
+  const token = localStorage.getItem("token");
+  let isLoggedIn = false;
+  let userId = null;
+
+  if (token) {
+    try {
+      const decodedToken = jwtDecode(token); // decode without verification
+      userId = decodedToken.userId;
+      isLoggedIn = true;
+    } catch (error) {
+      console.error("Invalid token:", error);
+    }
+  }
+
+  return {
+    isLoggedIn,
+    userId,
     selectedDreamId: localStorage.getItem("selectedDreamId"), // Get from localStorage
-    userId: null, // Add this line
-  },
+  };
+};
+
+export default createStore({
+  state: getInitialState(),
   mutations: {
     setLoggedIn(state, value) {
       state.isLoggedIn = value;
