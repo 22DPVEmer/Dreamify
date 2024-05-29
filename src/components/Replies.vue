@@ -5,7 +5,7 @@
       <button @click="submitReply">Submit</button>
     </div>
     <div>
-      <div v-for="reply in replies" :key="reply.ID">
+      <div v-for="reply in replies" :key="reply.Id">
         <div>
           <h3>{{ reply.author }}</h3>
           <div class="d-flex justify-content-between align-items-center">
@@ -41,12 +41,12 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
 const props = defineProps({
-  replies: Array,
+  replies: { type: Array, default: () => [] },
   showReplies: Boolean,
   commentId: Number,
 });
@@ -57,6 +57,31 @@ const newReply = ref("");
 const token = localStorage.getItem("token");
 const decodedToken = jwtDecode(token);
 const userId = decodedToken.userId;
+
+const fetchLikeStatus = async (reply) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8081/api/shared-dreams/replies/${reply.Id}/${userId}/likeStatus`
+    );
+    reply.likeStatus = response.data.likeStatus;
+    console.log("Like status for reply:", reply);
+    console.log("like status:", reply.likeStatus);
+  } catch (error) {
+    console.error("Error fetching like status:", error);
+  }
+};
+
+watch(
+  () => props.replies,
+  (newReplies) => {
+    if (Array.isArray(newReplies)) {
+      for (let reply of newReplies) {
+        fetchLikeStatus(reply);
+      }
+    }
+  },
+  { immediate: true }
+);
 
 const submitReply = async () => {
   console.log("submitReply called with newReply:", newReply.value);
@@ -88,7 +113,7 @@ const submitReply = async () => {
       author: decodedToken.username,
       Contents: newReply.value,
       Likes: 0,
-      likeStatus: null,
+      likeStatus: "neutral",
       ID: response.data.replyId,
       UserID: userId,
     };
@@ -106,25 +131,29 @@ const submitReply = async () => {
 
 const increaseLikes = async (reply) => {
   console.log("increaseLikes called with reply:", reply);
+  console.log("Reply ID:", reply.Id);
+
   try {
     if (reply.likeStatus === "liked") {
       console.log("Reply is already liked. Unliking...");
       await axios.post(
-        `http://localhost:8081/api/shared-dreams/replies/${reply.ID}/${userId}/unlike`
+        `http://localhost:8081/api/shared-dreams/replies/${reply.Id}/${userId}/unlike`
       );
       reply.Likes--;
       reply.likeStatus = "neutral";
     } else if (reply.likeStatus === "disliked") {
       console.log("Reply was disliked. Liking from dislike...");
       await axios.post(
-        `http://localhost:8081/api/shared-dreams/replies/${reply.ID}/${userId}/likeFromDislike`
+        `http://localhost:8081/api/shared-dreams/replies/${reply.Id}/${userId}/likeFromDislike`
       );
       reply.Likes += 2;
       reply.likeStatus = "liked";
     } else {
       console.log("Reply is not liked. Liking...");
+      console.log("Reply ID:", reply.Id);
+
       await axios.post(
-        `http://localhost:8081/api/shared-dreams/replies/${reply.ID}/${userId}/like`
+        `http://localhost:8081/api/shared-dreams/replies/${reply.Id}/${userId}/like`
       );
       reply.Likes++;
       reply.likeStatus = "liked";
@@ -141,21 +170,21 @@ const decreaseLikes = async (reply) => {
     if (reply.likeStatus === "disliked") {
       console.log("Reply is already disliked. Undisliking...");
       await axios.post(
-        `http://localhost:8081/api/shared-dreams/replies/${reply.ID}/${userId}/undislike`
+        `http://localhost:8081/api/shared-dreams/replies/${reply.Id}/${userId}/undislike`
       );
       reply.Likes++;
       reply.likeStatus = "neutral";
     } else if (reply.likeStatus === "liked") {
       console.log("Reply was liked. Disliking from like...");
       await axios.post(
-        `http://localhost:8081/api/shared-dreams/replies/${reply.ID}/${userId}/dislikeFromLike`
+        `http://localhost:8081/api/shared-dreams/replies/${reply.Id}/${userId}/dislikeFromLike`
       );
       reply.Likes -= 2;
       reply.likeStatus = "disliked";
     } else {
       console.log("Reply is not disliked. Disliking...");
       await axios.post(
-        `http://localhost:8081/api/shared-dreams/replies/${reply.ID}/${userId}/dislike`
+        `http://localhost:8081/api/shared-dreams/replies/${reply.Id}/${userId}/dislike`
       );
       reply.Likes--;
       reply.likeStatus = "disliked";
@@ -166,3 +195,7 @@ const decreaseLikes = async (reply) => {
   }
 };
 </script>
+
+<style scoped>
+/* Add any styles you need */
+</style>

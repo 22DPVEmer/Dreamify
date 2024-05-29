@@ -1099,6 +1099,26 @@ app.get("/api/shared-dreams/:id/comments", (req, res) => {
     });
 });
 
+app.get("/api/shared-dreams/comments/:id/replies", (req, res) => {
+  console.log(`Fetching replies for comment ID: ${req.params.id}`);
+  const comment_id = req.params.id;
+  pool
+    .query(`SELECT * FROM replies WHERE comment_id = ?`, [comment_id])
+    .then(([rows, fields]) => {
+      if (rows.length === 0) {
+        return res
+          .status(404)
+          .json({ message: "No replies found for this comment" });
+      }
+
+      res.json(rows);
+    })
+    .catch((error) => {
+      console.log("SQL Error:", error);
+      res.status(500).json({ message: error.message });
+    });
+});
+
 const nodemailer = require("nodemailer");
 
 app.post("/forgot-password", (req, res) => {
@@ -1216,6 +1236,34 @@ app.post("/api/shared-dreams/comments/:userId", async (req, res) => {
     res
       .status(200)
       .json({ message: "Comment inserted successfully", commentId });
+  } catch (err) {
+    console.error("Error inserting comment:", err);
+    res.status(500).json({ message: "Error inserting comment" });
+  }
+});
+
+app.post("/api/shared-dreams/replies/:userId", async (req, res) => {
+  console.log("Add comment endpoint hit");
+  const { userId } = req.params;
+  const { text, commentId } = req.body;
+  const date = new Date().toISOString().slice(0, 19).replace("T", " "); // Get current date in MySQL datetime format
+  const likes = 0;
+
+  const sql =
+    "INSERT INTO replies (user_id, Contents, Comment_id, Date_posted, Likes) VALUES (?, ?, ?, ?, ?)";
+
+  try {
+    const [result] = await pool.query(sql, [
+      userId,
+      text,
+      commentId,
+      date,
+      likes,
+    ]);
+    const replyId = result.insertId;
+
+    console.log("Comment inserted successfully");
+    res.status(200).json({ message: "Comment inserted successfully", replyId });
   } catch (err) {
     console.error("Error inserting comment:", err);
     res.status(500).json({ message: "Error inserting comment" });
@@ -1637,3 +1685,358 @@ app.get("/api/dreams/categories", (req, res) => {
     }
   });
 });
+
+//for replies
+// like status code
+app.get(
+  "/api/shared-dreams/replies/:id/:userid/likeStatus",
+  async (req, res) => {
+    const replyId = req.params.id;
+    const userId = req.params.userid;
+
+    // Check if the user has liked or disliked this reply
+    pool
+      .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
+        userId,
+        replyId,
+      ])
+      .then(([rows, fields]) => {
+        if (rows.length > 0) {
+          if (rows[0].disliked) {
+            // The user has disliked this reply
+            res.json({ likeStatus: "disliked" });
+          } else {
+            // The user has liked this reply
+            res.json({ likeStatus: "liked" });
+          }
+        } else {
+          // The user has not liked or disliked this reply
+          res.json({ likeStatus: "neutral" });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      });
+  }
+);
+
+//unlike replies
+
+app.post("/api/shared-dreams/replies/:id/:userid/unlike", async (req, res) => {
+  const replyId = req.params.id;
+  const userId = req.params.userid;
+
+  // Check if the user has already liked this reply
+  pool
+    .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
+      userId,
+      replyId,
+    ])
+    .then(([rows, fields]) => {
+      if (rows.length > 0 && !rows[0].disliked) {
+        // The user has liked this reply, so remove the like
+        pool
+          .query(`UPDATE replies SET Likes = Likes - 1 WHERE Id = ?`, [replyId])
+          .then(([rows, fields]) => {
+            pool
+              .query(
+                `DELETE FROM reply_likes WHERE UserId = ? AND ReplyId = ?`,
+                [userId, replyId]
+              )
+              .then(([rows, fields]) => {
+                res.json({ message: "Reply unliked successfully" });
+              });
+          });
+      } else {
+        // The user has not liked this reply
+        res.status(400).json({ message: "You have not liked this reply" });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+
+//like a reply
+
+app.post("/api/shared-dreams/replies/:id/:userid/like", async (req, res) => {
+  const replyId = req.params.id;
+  const userId = req.params.userid;
+
+  // Check if the user has already liked or disliked this reply
+  pool
+    .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
+      userId,
+      replyId,
+    ])
+    .then(([rows, fields]) => {
+      if (rows.length > 0) {
+        // The user has already liked or disliked this reply
+        if (rows[0].disliked) {
+          // The user has disliked this reply, so change it to a like
+          pool
+            .query(`UPDATE replies SET Likes = Likes + 1 WHERE Id = ?`, [
+              replyId,
+            ])
+            .then(([rows, fields]) => {
+              pool
+                .query(
+                  `UPDATE reply_likes SET disliked = FALSE WHERE UserId = ? AND ReplyId = ?`,
+                  [userId, replyId]
+                )
+                .then(([rows, fields]) => {
+                  res.json({ message: "Reply liked successfully" });
+                });
+            });
+        } else {
+          // The user has already liked this reply
+          res
+            .status(400)
+            .json({ message: "You have already liked this reply" });
+        }
+      } else {
+        // The user has not liked or disliked this reply yet, so add a like
+        pool
+          .query(`UPDATE replies SET Likes = Likes + 1 WHERE Id = ?`, [replyId])
+          .then(([rows, fields]) => {
+            pool
+              .query(
+                `INSERT INTO reply_likes (UserId, ReplyId, disliked) VALUES (?, ?, FALSE)`,
+                [userId, replyId]
+              )
+              .then(([rows, fields]) => {
+                res.json({ message: "Reply liked successfully" });
+              });
+          });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+
+//dislike a reply
+app.post("/api/shared-dreams/replies/:id/:userid/dislike", async (req, res) => {
+  const replyId = req.params.id;
+  const userId = req.params.userid;
+
+  // Check if the user has already disliked this reply
+  pool
+    .query(
+      `SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ? AND disliked = TRUE`,
+      [userId, replyId]
+    )
+    .then(([rows, fields]) => {
+      if (rows.length > 0) {
+        // The user has already disliked this reply, so can't dislike again
+        res
+          .status(400)
+          .json({ message: "You have already disliked this reply" });
+      } else {
+        // The user has not disliked this reply yet, so proceed
+
+        // Check if the user has liked this reply
+        pool
+          .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
+            userId,
+            replyId,
+          ])
+          .then(([rows, fields]) => {
+            if (rows.length > 0) {
+              // The user has liked this reply, so remove the like and add the dislike
+              pool
+                .query(
+                  `UPDATE reply_likes SET disliked = TRUE WHERE UserId = ? AND ReplyId = ?`,
+                  [userId, replyId]
+                )
+                .then(([rows, fields]) => {
+                  // Decrement the like count in the replies table if not null
+                  pool
+                    .query(
+                      `UPDATE replies SET Likes = Likes - 1 WHERE Id = ?`,
+                      [replyId]
+                    )
+                    .then(([rows, fields]) => {
+                      res.json({ message: "Reply disliked successfully" });
+                    });
+                });
+            } else {
+              // The user has not liked this reply yet, so just add the dislike
+              pool
+                .query(
+                  `INSERT INTO reply_likes (UserId, ReplyId, disliked) VALUES (?, ?, TRUE)`,
+                  [userId, replyId]
+                )
+                .then(([rows, fields]) => {
+                  // Decrement the like count in the replies table if not null
+                  pool
+                    .query(
+                      `UPDATE replies SET Likes = Likes - 1 WHERE Id = ?`,
+                      [replyId]
+                    )
+                    .then(([rows, fields]) => {
+                      res.json({ message: "Reply disliked successfully" });
+                    });
+                });
+            }
+          });
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+// undislike a reply
+app.post(
+  "/api/shared-dreams/replies/:id/:userid/undislike",
+  async (req, res) => {
+    const replyId = req.params.id;
+    const userId = req.params.userid;
+
+    // Check if the user has already disliked this reply
+    pool
+      .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
+        userId,
+        replyId,
+      ])
+      .then(([rows, fields]) => {
+        if (rows.length > 0 && rows[0].disliked) {
+          // The user has disliked this reply, so remove the dislike
+          pool
+            .query(`DELETE FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
+              userId,
+              replyId,
+            ])
+            .then(([rows, fields]) => {
+              // Only increase likes if the dislike record was successfully deleted
+              if (rows.affectedRows > 0) {
+                pool
+                  .query(`UPDATE replies SET Likes = Likes + 1 WHERE Id = ?`, [
+                    replyId,
+                  ])
+                  .then(([rows, fields]) => {
+                    res.json({ message: "Reply undisliked successfully" });
+                  });
+              } else {
+                res.json({ message: "You have not disliked this reply" });
+              }
+            });
+        } else {
+          // The user has not disliked this reply
+          res.status(400).json({ message: "You have not disliked this reply" });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      });
+  }
+);
+
+// dislike from like a reply
+
+app.post(
+  "/api/shared-dreams/replies/:id/:userid/dislikeFromLike",
+  async (req, res) => {
+    const replyId = req.params.id;
+    const userId = req.params.userid;
+
+    // Check if the user has already liked or disliked this reply
+    pool
+      .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
+        userId,
+        replyId,
+      ])
+      .then(([rows, fields]) => {
+        if (rows.length > 0) {
+          // The user has already liked or disliked this reply
+          if (!rows[0].disliked) {
+            // The user has liked this reply, so change it to a dislike and decrease the likes count by 2
+            pool
+              .query(`UPDATE replies SET Likes = Likes - 2 WHERE Id = ?`, [
+                replyId,
+              ])
+              .then(([rows, fields]) => {
+                pool
+                  .query(
+                    `UPDATE reply_likes SET disliked = TRUE WHERE UserId = ? AND ReplyId = ?`,
+                    [userId, replyId]
+                  )
+                  .then(([rows, fields]) => {
+                    res.json({ message: "Reply disliked successfully" });
+                  });
+              });
+          } else {
+            // The user has already disliked this reply
+            res
+              .status(400)
+              .json({ message: "You have already disliked this reply" });
+          }
+        } else {
+          // The user has not liked or disliked this reply yet, so return an error
+          res
+            .status(400)
+            .json({ message: "You have not liked this reply yet" });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      });
+  }
+);
+
+app.post(
+  "/api/shared-dreams/replies/:id/:userid/likeFromDislike",
+  async (req, res) => {
+    const replyId = req.params.id;
+    const userId = req.params.userid;
+
+    // Check if the user has already liked or disliked this reply
+    pool
+      .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
+        userId,
+        replyId,
+      ])
+      .then(([rows, fields]) => {
+        if (rows.length > 0) {
+          // The user has already liked or disliked this reply
+          if (rows[0].disliked) {
+            // The user has disliked this reply, so change it to a like and increase the likes count by 2
+            pool
+              .query(`UPDATE replies SET Likes = Likes + 2 WHERE Id = ?`, [
+                replyId,
+              ])
+              .then(([rows, fields]) => {
+                pool
+                  .query(
+                    `UPDATE reply_likes SET disliked = FALSE WHERE UserId = ? AND ReplyId = ?`,
+                    [userId, replyId]
+                  )
+                  .then(([rows, fields]) => {
+                    res.json({ message: "Reply liked successfully" });
+                  });
+              });
+          } else {
+            // The user has already liked this reply
+            res
+              .status(400)
+              .json({ message: "You have already liked this reply" });
+          }
+        } else {
+          // The user has not liked or disliked this reply yet, so return an error
+          res
+            .status(400)
+            .json({ message: "You have not disliked this reply yet" });
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      });
+  }
+);

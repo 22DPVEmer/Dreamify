@@ -34,14 +34,22 @@
                 }"
               />
             </button>
-            <button class="btn text-white">
+            <button class="btn text-white" @click="toggleReplies(comment)">
               <font-awesome-icon
                 :icon="['fas', 'message']"
                 :style="{ color: 'white' }"
               />
-              Reply
+              {{ comment.replies?.length || 0 }} Reply
             </button>
           </div>
+        </div>
+        <div v-if="comment.showReplies" class="replies-section">
+          <Replies
+            :replies="comment.replies"
+            :showReplies="comment.showReplies"
+            :commentId="comment.ID"
+            @reply-added="addReplyToComment(comment.ID, $event)"
+          />
         </div>
       </div>
     </div>
@@ -49,12 +57,13 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import Replies from "./Replies.vue";
+import { ref, onMounted } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
 const props = defineProps({
-  comments: Array,
+  comments: { type: Array, default: () => [] },
   showComments: Boolean,
   dreamId: Number,
 });
@@ -65,6 +74,44 @@ const newComment = ref("");
 const token = localStorage.getItem("token");
 const decodedToken = jwtDecode(token);
 const userId = decodedToken.userId;
+
+const fetchLikeStatus = async (comment) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/${userId}/likeStatus`
+    );
+    comment.likeStatus = response.data.likeStatus;
+  } catch (error) {
+    console.error("Error fetching like status:", error);
+  }
+};
+
+const fetchReplies = async (comment) => {
+  console.log("Fetching replies for comment:", comment);
+  console.log("comment.ID:", comment.ID);
+
+  try {
+    const response = await axios.get(
+      `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/replies`
+    );
+    comment.replies = response.data || [];
+  } catch (error) {
+    console.error("Error fetching replies:", error);
+    comment.replies = [];
+  }
+};
+
+const fetchCommentsWithLikeStatus = async () => {
+  for (let comment of props.comments) {
+    comment.replies = []; // Initialize replies as an empty array
+    await fetchLikeStatus(comment);
+    await fetchReplies(comment); // Fetch replies for each comment
+  }
+};
+
+onMounted(() => {
+  fetchCommentsWithLikeStatus();
+});
 
 const submitComment = async () => {
   console.log("submitComment called with newComment:", newComment.value);
@@ -99,6 +146,8 @@ const submitComment = async () => {
       likeStatus: "neutral",
       ID: response.data.commentId,
       UserID: userId,
+      showReplies: false,
+      replies: [],
     };
 
     console.log("Emitting comment-added event with:", newCommentObject);
@@ -131,6 +180,8 @@ const increaseLikes = async (comment) => {
       comment.likeStatus = "liked";
     } else {
       console.log("Comment is not liked. Liking...");
+      console.log("comment.ID:", comment.ID);
+
       await axios.post(
         `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/${userId}/like`
       );
@@ -173,7 +224,31 @@ const decreaseLikes = async (comment) => {
     console.error("Error checking dislikes:", error);
   }
 };
+
+const toggleReplies = async (comment) => {
+  console.log(
+    "Toggling replies for comment ID:",
+    comment.ID,
+    "Current showReplies:",
+    comment.showReplies
+  );
+  if (!comment.showReplies) {
+    await fetchReplies(comment); // Fetch replies if not already fetched
+  }
+  comment.showReplies = !comment.showReplies;
+  console.log("New showReplies state:", comment.showReplies);
+};
+
+const addReplyToComment = (commentId, newReply) => {
+  const comment = props.comments.find((comment) => comment.ID === commentId);
+  if (comment) {
+    comment.replies.push(newReply);
+  }
+};
 </script>
 
-need a path for likestatus and likes then replies the the same for replies then
-admin panel and all sorts of filltering bs
+<style scoped>
+.replies-section {
+  margin-left: 50px;
+}
+</style>
