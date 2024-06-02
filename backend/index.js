@@ -542,6 +542,30 @@ app.post("/api/signup", async (req, res) => {
   }
 });
 
+app.get("/api/shared-dreams/:id/dream-status", async (req, res) => {
+  const dreamid = req.params.id;
+  console.log(`Checking status for dream ID: ${dreamid}`); // Debugging log
+
+  try {
+    const [results] = await pool.query(
+      // for next time use pool.query instead of pool.execute
+      "SELECT * FROM shared_dreams WHERE Dream_id = ?",
+      [dreamid]
+    );
+    console.log("Query executed successfully. Results:", results); // Debugging log
+    if (results.length > 0) {
+      console.log("Dream is shared.");
+      res.status(200).json({ message: "Dream is shared" });
+    } else {
+      console.log("Dream not found.");
+      res.status(404).json({ message: "Dream not found" });
+    }
+  } catch (error) {
+    console.error("Database error:", error); // Debugging log
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 //Shared dreams creation code
 app.post("/api/dreams/:dreamId/share", async (req, res) => {
   const dreamId = req.params.dreamId;
@@ -562,6 +586,28 @@ app.post("/api/dreams/:dreamId/share", async (req, res) => {
     })
     .catch((err) => {
       console.error(err);
+      res.status(500).json({ message: "Server error" });
+    });
+});
+
+app.post("/api/dreams/:id/unshare", async (req, res) => {
+  const dreamId = req.params.id;
+
+  console.log(`Attempting to unshare dream with ID: ${dreamId}`); // Added logging
+
+  // Query the database to delete the dream from shared_dreams
+  pool
+    .query("DELETE FROM shared_dreams WHERE dream_id = ?", [dreamId])
+    .then(([rows, fields]) => {
+      console.log("Delete operation results:", rows); // Added logging
+      if (rows.affectedRows === 0) {
+        res.status(409).json({ message: "Dream not shared" });
+      } else {
+        res.json({ message: "Dream unshared successfully" });
+      }
+    })
+    .catch((error) => {
+      console.error("Database error:", error); // Debugging log
       res.status(500).json({ message: "Server error" });
     });
 });
