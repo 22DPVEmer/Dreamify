@@ -136,7 +136,11 @@ onMounted(async () => {
       }
     );
 
-    dreams.value = dreamsResponse.data;
+    // Sort the dreams by date in descending order (most recent first)
+    dreams.value = dreamsResponse.data.sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    );
+
     console.log("Dreams:", dreams.value);
     console.log("User:", user.value);
   } catch (error) {

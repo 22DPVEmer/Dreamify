@@ -2,7 +2,7 @@
   <div v-if="showReplies">
     <div>
       <input v-model="newReply" type="text" placeholder="Add a reply..." />
-      <button @click="submitReply">Submit</button>
+      <button @click="submitReply">Reply</button>
     </div>
     <div>
       <div v-for="reply in replies" :key="reply.Id">

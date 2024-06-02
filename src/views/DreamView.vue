@@ -1,103 +1,102 @@
 <template>
   <div class="container mt-5" style="padding-top: 100px">
     <div v-if="dream">
-      <div class="card mb-3">
+      <div class="card mb-3 bg-dark text-white">
         <div class="card-body">
-          <h5 class="card-title">
+          <h1 class="card-title text-center">
             <span v-if="editing">
-              <input type="text" v-model="editedTitle" class="form-control" />
+              <input
+                type="text"
+                v-model="editedTitle"
+                class="form-control bg-dark text-white"
+              />
             </span>
+            <span v-else>{{ dream.title }}</span>
+          </h1>
+          <div class="text-center mb-3">
+            <button
+              type="button"
+              data-bs-toggle="modal"
+              data-bs-target="#dreamEntryModal"
+              class="btn neon-btn"
+            >
+              Edit
+            </button>
 
-            <span v-else>
-              <span class="title-label">Title</span>
-              <span class="title-value">{{ dream.title }}</span>
-            </span>
-          </h5>
-          <p class="card-text">
-
+            <button class="btn neon-btn ms-2" @click="deleteDream">
+              Delete
+            </button>
+            <button class="btn neon-btn ms-2" @click="shareDream">Share</button>
+          </div>
+          <p class="card-text text-center">
+            <small class="text-muted"
+              >{{ formattedDate(dream.date) }} -
+              {{ dream.private ? "private" : "public" }}</small
+            >
+          </p>
+          <p class="card-text mt-3">
             <span v-if="editing">
               <textarea
                 v-model="editedDescription"
-                class="form-control"
+                class="form-control bg-dark text-white"
               ></textarea>
             </span>
-            <span v-else><span class="title-label">Description </span class="title-value">{{ dream.description }}</span>
+            <span v-else>{{ dream.description }}</span>
           </p>
-          <p class="card-text">
-            <small class="text-muted">{{ formattedDate(dream.date) }}</small>
+          <p class="card-text mt-3">
+            <span class="role-label">ROLE</span>
+            <span>{{ dream.role }}</span>
           </p>
-          <button class="btn btn-sm btn-danger" @click="deleteDream">
-            Delete
-          </button>
-          <button         type="button"
-          
-          data-bs-toggle="modal"
-          data-bs-target="#dreamEntryModal" class="btn btn-sm btn-primary ms-2" >
-            Edit
-          </button>
-          <button  class="btn btn-sm btn-info ms-2" @click="shareDream">
-            Share
-          </button>
         </div>
       </div>
     </div>
     <div v-else>
       <p>No dream selected.</p>
     </div>
-    <DreamInfo/>
+    <DreamInfo @dream-updated="handleDreamUpdated" />
   </div>
 </template>
-
 <script setup>
-
 import DreamInfo from "../components/DreamInfosave.vue";
-//New File, doesnt work
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted } from "vue";
 import axios from "axios";
 import { useRoute, useRouter } from "vue-router";
 import store from "../store/store.js";
 
-import { jwtDecode } from "jwt-decode"; // Import jwtDecode directly
-
 const route = useRoute();
 const router = useRouter();
 
-const dreamId = store.state.selectedDreamId; // shis fakin works
-//const dreamId = route.params.id;
+const dreamId = store.state.selectedDreamId;
 console.log("The dream id is:", dreamId);
 const dream = ref(null);
 const editing = ref(false);
-let editedTitle = ref("");
-let editedDescription = ref("");
+const editedTitle = ref("");
+const editedDescription = ref("");
 
-//post request for sharing dream
 const token = localStorage.getItem("token");
+
 const shareDream = async () => {
   console.log("Sharing dream with id:", dreamId);
   try {
     const response = await axios.post(
       `http://localhost:8081/api/dreams/${dreamId}/share`
     );
-
     if (response.data.message === "Dream shared successfully") {
-      // Handle successful share (e.g., show a success message)
       alert("Dream shared successfully!");
     } else {
-      // Handle unsuccessful share (e.g., show an error message)
       alert("Failed to share dream.");
     }
   } catch (error) {
-    // Handle error (e.g., show an error message)
     alert("An error occurred while sharing the dream.");
   }
 };
 
-//this works
 onMounted(async () => {
   try {
     const response = await axios.get(
       `http://localhost:8081/api/dreams/${dreamId}`
     );
+    console.log("Dream response:", response.data);
     dream.value = response.data;
     editedTitle.value = dream.value.title;
     editedDescription.value = dream.value.description;
@@ -114,20 +113,8 @@ const toggleEdit = () => {
   }
 };
 
-const saveChanges = async () => {
-  const requestBody = {
-    title: editedTitle.value,
-    description: editedDescription.value,
-  };
-
-  try {
-    await axios.put(`http://localhost:8081/api/dreams/${dreamId}`, requestBody);
-    dream.value.title = editedTitle.value;
-    dream.value.description = editedDescription.value;
-    editing.value = false;
-  } catch (error) {
-    console.error(error);
-  }
+const handleDreamUpdated = (updatedDream) => {
+  dream.value = { ...dream.value, ...updatedDream };
 };
 
 const deleteDream = async () => {
@@ -135,8 +122,6 @@ const deleteDream = async () => {
     await axios.delete(`http://localhost:8081/api/dreams/${dreamId}/delete`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-
-    // Navigate to dream list or perform any other action after successful deletion
     router.push({ name: "profile" });
   } catch (error) {
     console.error(error);
@@ -148,18 +133,59 @@ const formattedDate = (dateString) => {
   return new Date(dateString).toLocaleDateString("en-US", options);
 };
 </script>
-
 <style scoped>
 .card {
-  border: 1px solid rgba(0, 0, 0, 0.125);
-}
-.title-label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.125);
+  background-color: #1e1e1e;
 }
 
-.title-value {
-  display: block;
+.text-white {
+  color: #ffffff !important;
+}
+
+.neon-btn {
+  border: 2px solid #00ccff;
+  color: #00ccff;
+  background: none;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.neon-btn:hover {
+  background-color: #00ccff;
+  color: #000000;
+}
+
+.card-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+}
+
+.role-label {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+textarea.form-control,
+input.form-control {
+  color: #ffffff;
+  background-color: #1e1e1e;
+  border: 1px solid #00ccff;
+}
+
+textarea.form-control:focus,
+input.form-control:focus {
+  box-shadow: 0 0 10px #00ccff;
+  border-color: #00ccff;
+}
+
+.text-muted {
+  color: #6c757d !important;
+}
+
+.container {
+  margin-top: 50px;
+  color: white;
 }
 </style>
+add tags, categories, lucid, regular etc to show instantly have share, become
+hide if already in dreamboard

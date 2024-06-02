@@ -2,7 +2,7 @@
   <div v-if="showComments">
     <div>
       <input v-model="newComment" type="text" placeholder="Add a comment..." />
-      <button @click="submitComment">Submit</button>
+      <button @click="submitComment">Comment</button>
     </div>
     <div>
       <div v-for="comment in comments" :key="comment.ID">

@@ -80,6 +80,8 @@ async function initializeDatabase(pool) {
       `CREATE TABLE IF NOT EXISTS shared_dreams (
         id INT AUTO_INCREMENT PRIMARY KEY,
         dream_id INT,
+        Date DATE,
+        Likes INT DEFAULT 0,
         FOREIGN KEY (dream_id) REFERENCES dream_entries(id) ON DELETE CASCADE,
         UNIQUE (dream_id)
       )`,
@@ -377,26 +379,43 @@ app.put("/api/dreams/:dreamId", async (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 });
-//for fetching dreams to save
+//for fetching dreams to save later
 app.get("/api/dreams/:id/fetch", (req, res) => {
   console.log("Fetch dream endpoint hit");
   const dreamId = req.params.id;
 
+  const query = `
+    SELECT 
+      d.id, d.title, d.description, d.date, d.lucid,d.category,
+      GROUP_CONCAT(t.tag_name SEPARATOR ',') AS tags
+    FROM 
+      dream_entries d
+    LEFT JOIN 
+      tags t ON d.id = t.dream_id
+    WHERE 
+      d.id = ?
+    GROUP BY 
+      d.id
+  `;
+
   pool
-    .query("SELECT * FROM dream_entries WHERE id = ?", [dreamId])
+    .query(query, [dreamId])
     .then(([rows, fields]) => {
       if (rows.length > 0) {
-        res.json(rows[0]);
+        const dream = rows[0];
+        console.log(dream);
+        dream.tags = dream.tags ? dream.tags.split(",") : [];
+        res.json(dream);
       } else {
         res.status(404).json({ message: "No dream found with this id" });
       }
     })
-
     .catch((err) => {
       console.error(err);
       res.status(500).json({ message: "Server error" });
     });
 });
+
 //Dream entry delete endpoint code
 
 app.delete("/api/dreams/:id/delete", async (req, res) => {
@@ -696,32 +715,83 @@ app.post("/user", async (req, res) => {
 });
 
 // Dream entry saval code
-app.post("/user/save", (req, res) => {
+app.post("/user/save", async (req, res) => {
   console.log(req.body);
-  const { dreamId, date, title, description, lucid } = req.body;
+  const { dreamId, date, title, description, lucid, tags, category } = req.body;
+
   const sqlUpdateDreamEntries =
-    "UPDATE dream_entries SET date = ?, title = ?, description = ?, lucid = ? WHERE id = ? AND user_id = ?";
+    "UPDATE dream_entries SET date = ?, title = ?, description = ?, lucid = ?, category = ? WHERE id = ? AND user_id = ?";
+  const sqlDeleteTags =
+    "DELETE FROM tags WHERE dream_id = ? AND tag_name NOT IN (?)";
+  const sqlInsertTag =
+    "INSERT INTO tags (user_id, dream_id, tag_name) VALUES (?, ?, ?)";
 
-  const token = req.headers.authorization.split(" ")[1];
-  const decodedToken = jwt.verify(token, secretKey);
-  const userId = decodedToken.userId;
-  console.log("users id is", userId);
-  console.log("date", dreamId);
-  console.log("dream id is", dreamId);
-
-  pool.query(
-    sqlUpdateDreamEntries,
-    [date, title, description, lucid, dreamId, userId],
-    (err, result) => {
-      if (err) {
-        console.log(err);
-        res.status(400).send("Error updating dream");
-      } else {
-        console.log("Dream updated successfully");
-      }
+  try {
+    // Get user ID from token
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      console.error("Authorization header missing");
+      return res.status(401).send("Authorization header missing");
     }
-  );
+
+    const token = authHeader.split(" ")[1];
+    const decodedToken = jwt.verify(token, secretKey);
+    const userId = decodedToken.userId;
+    console.log("User ID extracted from token:", userId);
+
+    // Ensure tags is an array
+    if (!Array.isArray(tags)) {
+      console.error("Tags should be an array");
+      return res.status(400).send("Tags should be an array");
+    }
+
+    // Update dream entry
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      await connection.execute(sqlUpdateDreamEntries, [
+        date,
+        title,
+        description,
+        lucid,
+        category,
+        dreamId,
+        userId,
+      ]);
+
+      console.log("Dream updated successfully");
+
+      // Prepare tags for deletion and insertion
+      const tagNames = tags.map((tag) => tag.trim());
+
+      // Delete tags not in the new tag list
+      await connection.execute(sqlDeleteTags, [dreamId, tagNames]);
+
+      console.log("Old tags deleted successfully");
+
+      // Insert new tags
+      const tagPromises = tagNames.map((tag) =>
+        connection.execute(sqlInsertTag, [userId, dreamId, tag])
+      );
+      await Promise.all(tagPromises);
+
+      await connection.commit();
+
+      res.status(200).send("Dream and tags updated successfully");
+    } catch (err) {
+      await connection.rollback();
+      console.error("Error during database operation:", err);
+      res.status(500).send("Error during database operation");
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("Error processing request:", error);
+    res.status(401).send("Unauthorized");
+  }
 });
+
 //token code
 const jwt = require("jsonwebtoken");
 

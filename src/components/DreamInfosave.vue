@@ -7,15 +7,15 @@
     tabindex="-1"
     aria-hidden="true"
   >
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title text-dark h1 mx-5 text-white">Edit mode</h5>
+          <h5 class="modal-title text-dark h1 mx-5 text-white">New Dream</h5>
         </div>
         <div class="modal-body">
           <form @submit.prevent="submitForm">
             <div class="mb-3 text-white">
-              <label for="dreamDate" class="form-label">Date</label>
+              <label for="dreamDate" class="form-label h4">Date</label>
               <input
                 type="date"
                 class="form-control input-background text-white"
@@ -25,19 +25,19 @@
               />
             </div>
             <div class="mb-3 text-dark">
-              <label for="dreamTitle" class="form-label text-white"
+              <label for="dreamTitle" class="form-label text-white h4"
                 >Title</label
               >
               <input
                 type="text"
-                class="form-control input-background text-white"
+                class="form-control input-background text-white h1"
                 id="dreamTitle"
                 v-model="dreamTitle"
                 maxlength="30"
               />
             </div>
             <div class="mb-3 text-dark">
-              <label for="dreamDescription" class="form-label text-white"
+              <label for="dreamDescription" class="form-label text-white h4"
                 >Description</label
               >
               <textarea
@@ -48,50 +48,109 @@
                 v-model="dreamDescription"
               ></textarea>
             </div>
+            <div class="mb-3 text-dark">
+              <label for="dd" class="form-label text-white h4 text-center w-100"
+                >Category</label
+              >
+              <div class="row justify-content-center">
+                <div
+                  class="form-check col-6 col-md-3 my-2"
+                  v-for="category in categories"
+                  :key="category.id"
+                >
+                  <input
+                    class="form-check-input h6"
+                    type="radio"
+                    :id="'category' + category.id"
+                    name="category"
+                    v-model="selectedCategory"
+                    :value="category"
+                  />
+                  <label
+                    class="form-check-label text-white h5"
+                    :for="'category' + category.id"
+                  >
+                    {{ category.name }}
+                  </label>
+                </div>
+              </div>
+            </div>
 
             <div>
               <div v-if="isInputVisible" class="d-flex align-items-center">
                 <input
                   type="text"
-                  class="form-control form-control-sm mb-3 input-background text-white"
+                  class="form-control form-control-lg mb-3 input-background text-white"
                   placeholder="Add tag"
-                  @keydown.space="addTag"
+                  @keydown.enter.prevent="addTag"
+                  @keydown.space.prevent="addTag"
                   @input="updateCharacterCount"
                   @keydown.backspace="handleBackspace"
                   v-model="currentTag"
                   ref="inputRef"
                 />
-                <div>{{ totalCharacterCount }}/40</div>
                 <button
-                  class="btn btn-dark btn-sm ms-2 mb-3"
+                  class="btn btn-dark btn-lg ms-2 mb-3"
+                  @click="addTag"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Submit"
+                  type="button"
+                >
+                  ✓
+                </button>
+
+                <button
+                  class="btn btn-dark btn-lg ms-2 mb-3"
                   @click="toggleInputVisibility"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="top"
+                  title="Close"
+                  type="button"
                 >
                   X
                 </button>
               </div>
+
               <button
                 v-else
-                class="btn btn-dark rounded-pill mb-3"
+                class="btn btn-dark rounded-pill mb-3 btn-lg"
                 @click="toggleInputVisibility"
+                type="button"
               >
                 <font-awesome-icon :icon="['fas', 'plus']" class="fa-1x" />
                 Add tags
               </button>
             </div>
+
+            <div class="mb-3 text-dark">
+              <div
+                v-for="(tag, index) in tags"
+                :key="index"
+                class="btn btn-dark rounded-pill mb-3 btn-lg"
+              >
+                {{ tag }}
+                <button
+                  @click="removeTag(index)"
+                  class="btn btn-close btn-sm ms-2 btn-close-white"
+                ></button>
+              </div>
+            </div>
+
             <div class="mb-3 text-dark text-center">
               <label for="dreamType" class="form-label text-white fs-4">
                 What type of dream did you have?
               </label>
               <div class="d-flex justify-content-center">
                 <div
-                  class="dream-type-option rounded p-2 fs-3 mx-2"
+                  class="dream-type-option rounded p-3 fs-2 mx-3"
                   :class="{ 'neon-selected': dreamType === 'regular' }"
                   @click="dreamType = 'regular'"
                 >
                   Regular
                 </div>
                 <div
-                  class="dream-type-option rounded p-2 fs-3 mx-2"
+                  class="dream-type-option rounded p-3 fs-2 mx-3"
                   :class="{ 'neon-selected': dreamType === 'lucid' }"
                   @click="dreamType = 'lucid'"
                 >
@@ -103,7 +162,7 @@
             <div class="d-flex justify-content-between align-items-center">
               <button
                 type="button"
-                class="btn btn-dark"
+                class="btn btn-dark btn-lg"
                 data-bs-dismiss="modal"
               >
                 Cancel
@@ -111,7 +170,7 @@
 
               <button
                 type="submit"
-                class="btn btn-dark"
+                class="btn btn-dark btn-lg"
                 :disabled="!isFormValid"
                 data-bs-dismiss="modal"
               >
@@ -126,12 +185,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
-import { formatISO, subDays } from "date-fns";
-import { watch } from "vue";
+import { ref, computed, watch } from "vue";
+import { formatISO } from "date-fns";
 import store from "../store/store.js";
 
 const dreamId = store.state.selectedDreamId; // shis fakin works
+const emit = defineEmits(["dream-updated"]);
 
 const dreamDate = ref(formatISO(new Date(), { representation: "date" }));
 const dreamTitle = ref("");
@@ -141,6 +200,28 @@ const maxDate = formatISO(new Date(), { representation: "date" });
 const tags = ref([]);
 const currentTag = ref("");
 const tagLimit = ref(40);
+const selectedCategory = ref(null);
+
+const categories = ref([
+  { id: 1, name: "Adventure & Exploration" },
+  { id: 2, name: "Nightmares & Fears" },
+  { id: 3, name: "Relationships & Family" },
+  { id: 4, name: "Work & Career" },
+  { id: 5, name: "Learning & Discovery" },
+  { id: 6, name: "Fantasy & Mythology" },
+  { id: 7, name: "Animals & Nature" },
+  { id: 8, name: "Health & Healing" },
+  { id: 9, name: "Mystical & Spiritual" },
+  { id: 10, name: "Celebration & Joy" },
+]);
+
+watch(selectedCategory, (newCategory) => {
+  if (newCategory) {
+    console.log("Selected category:", newCategory.id);
+    console.log("Selected category name:", newCategory.name);
+    console.log(selectedCategory.value.id);
+  }
+});
 
 const isFormValid = computed(() => {
   return (
@@ -149,27 +230,22 @@ const isFormValid = computed(() => {
     dreamDescription.value.trim() !== ""
   );
 });
+
 function checkFormValidity() {
   return isFormValid.value;
 }
 
 const totalCharacterCount = computed(() => {
-  if (tags.value.length < 40) {
-    return tags.value.join(" ").length + currentTag.value.length;
-  }
+  return tags.value.join(" ").length + currentTag.value.length;
 });
 
 function addTag(event) {
-  // Prevent default behavior of all keys
-
-  const totalLength = totalCharacterCount.value;
-
   if (
-    event.key !== " " && // Check if the pressed key is not a space
-    totalLength < tagLimit.value // Check if total length is less than the limit
+    currentTag.value.trim() !== "" &&
+    totalCharacterCount.value <= tagLimit.value
   ) {
-    // Append non-space characters
-    currentTag.value += event.key;
+    tags.value.push(currentTag.value.trim());
+    currentTag.value = "";
   }
 }
 
@@ -185,11 +261,19 @@ function handleBackspace(event) {
   }
 }
 
+function removeTag(index) {
+  tags.value.splice(index, 1);
+}
+
 async function submitForm() {
   if (!checkFormValidity()) return;
+
+  // Push the current tag into tags array if it's not empty
   if (currentTag.value.trim() !== "") {
-    tags.value = currentTag.value.trim().split(/\s+/);
+    tags.value.push(currentTag.value.trim());
+    currentTag.value = "";
   }
+
   console.log("Tags:", tags.value); // Log the tags array
 
   const dreamEntry = {
@@ -198,10 +282,9 @@ async function submitForm() {
     title: dreamTitle.value,
     description: dreamDescription.value,
     lucid: dreamType.value === "lucid" ? 1 : 0,
+    category: selectedCategory.value.id,
     tags: tags.value,
   };
-
-  currentTag.value = "";
 
   const token = localStorage.getItem("token");
   console.log("Sending token:", token);
@@ -214,23 +297,24 @@ async function submitForm() {
     },
     body: JSON.stringify(dreamEntry),
   });
+
   try {
     if (response.ok) {
       alert("Dream entry successful!");
+      // Emit an event with the updated dream data
+      emit("dream-updated", dreamEntry);
+
+      // Close the modal
+      const modal = new bootstrap.Modal(
+        document.getElementById("dreamEntryModal")
+      );
+      modal.hide();
     } else {
       alert("Dream entry failed!");
     }
   } catch (error) {
     console.error("Error:", error);
   }
-}
-
-// For the tags button
-const isInputVisible = ref(false);
-const inputRef = ref(null);
-
-function toggleInputVisibility() {
-  isInputVisible.value = !isInputVisible.value;
 }
 
 async function fetchDreamData() {
@@ -251,16 +335,30 @@ async function fetchDreamData() {
   }
 
   const dreamData = await response.json();
+  console.log("Dream data:", dreamData);
+
+  console.log("Dream data:", dreamData.categories);
 
   dreamDate.value = formatISO(new Date(), { representation: "date" }); //dreamData.date;
   dreamTitle.value = dreamData.title;
   dreamDescription.value = dreamData.description;
   dreamType.value = dreamData.lucid ? "lucid" : "regular";
   tags.value = dreamData.tags;
+  selectedCategory.value = categories.value.find(
+    (category) => category.id === dreamData.category
+  );
 }
 fetchDreamData();
-watch(() => store.state.selectedDreamId, fetchDreamData);
+
+// For the tags button
+const isInputVisible = ref(false);
+const inputRef = ref(null);
+
+function toggleInputVisibility() {
+  isInputVisible.value = !isInputVisible.value;
+}
 </script>
+
 <style scoped>
 .dot {
   color: gray;
@@ -310,6 +408,7 @@ watch(() => store.state.selectedDreamId, fetchDreamData);
 .input-background {
   background-color: #5c4178 !important;
 }
+
 ::placeholder {
   color: white;
   opacity: 1; /* Firefox */
@@ -317,5 +416,18 @@ watch(() => store.state.selectedDreamId, fetchDreamData);
 
 .color {
   color: #00ccff;
+}
+
+.tag {
+  display: inline-block;
+  background-color: #6c757d;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  margin: 0.25rem;
+}
+.btn-close-white {
+  filter: invert(1);
+  opacity: 1;
 }
 </style>

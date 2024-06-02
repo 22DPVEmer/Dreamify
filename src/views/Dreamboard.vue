@@ -51,7 +51,14 @@
       <div class="card-body">
         <p class="card-text text-white">{{ dream.username }}</p>
         <h2 class="card-title text-white">{{ dream.title }}</h2>
-        <p class="card-text text-white">{{ dream.description }}</p>
+        <p class="card-text text-white">
+          {{ getShortDescription(dream) }}
+          <span v-if="dream.description.length > 100">
+            <a @click="toggleFullText(dream)" class="see-more">
+              {{ dream.showFullText ? "see less" : "...see more" }}
+            </a>
+          </span>
+        </p>
         <p class="card-text text-white">
           {{ new Date(dream.Date).toLocaleDateString() }}
         </p>
@@ -100,7 +107,6 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref, reactive, onMounted, watch, computed } from "vue";
 import axios from "axios";
@@ -135,6 +141,7 @@ const fetchDreams = async () => {
         likeStatus: "neutral",
         comments: [],
         showComments: false,
+        showFullText: false,
       }));
 
       for (const dream of dreams) {
@@ -247,8 +254,20 @@ const filterDreams = () => {
 };
 
 watch(selected, filterDreams);
-</script>
 
+const getShortDescription = (dream) => {
+  if (dream.showFullText) {
+    return dream.description;
+  }
+  return dream.description.length > 100
+    ? dream.description.substring(0, 100)
+    : dream.description;
+};
+
+const toggleFullText = (dream) => {
+  dream.showFullText = !dream.showFullText;
+};
+</script>
 <style scoped>
 .comments-section {
   margin-left: 50px; /* Adjust the margin as needed */
@@ -262,6 +281,11 @@ watch(selected, filterDreams);
 .card {
   color: white;
   background-color: black;
+}
+
+.see-more {
+  color: #00ccff;
+  cursor: pointer;
 }
 
 /* Styles for larger screens */
