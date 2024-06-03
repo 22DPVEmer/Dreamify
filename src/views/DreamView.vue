@@ -19,6 +19,7 @@
               data-bs-toggle="modal"
               data-bs-target="#dreamEntryModal"
               class="btn neon-btn"
+              @click="toggleEdit"
             >
               Edit
             </button>
@@ -47,6 +48,7 @@
               {{ isShared ? "public" : "private" }}</small
             >
           </p>
+          <div class="separator"></div>
           <p class="card-text mt-3">
             <span v-if="editing">
               <textarea
@@ -56,9 +58,27 @@
             </span>
             <span v-else>{{ dream.description }}</span>
           </p>
+          <div class="separator"></div>
           <p class="card-text mt-3">
-            <span class="role-label">ROLE</span>
-            <span>{{ dream.role }}</span>
+            <span class="role-label">Tags: </span>
+            <span>{{ dream.tags.join(", ") }}</span>
+          </p>
+          <div class="separator"></div>
+          <p class="card-text mt-3">
+            <span class="role-label">Category: </span>
+            <span>{{ getCategoryName(dream.category) }}</span>
+          </p>
+          <div class="separator"></div>
+          <p class="card-text mt-3">
+            <span class="role-label">Lucidity: </span>
+            <span
+              :class="{
+                'lucid-box': dream.lucid === 1,
+                'regular-box': dream.lucid === 0,
+              }"
+            >
+              {{ dream.lucid === 1 ? "Lucid" : "Regular" }}
+            </span>
           </p>
         </div>
       </div>
@@ -69,7 +89,6 @@
     <DreamInfo @dream-updated="handleDreamUpdated" />
   </div>
 </template>
-
 <script setup>
 import DreamInfo from "../components/DreamInfosave.vue";
 import { ref, onMounted } from "vue";
@@ -81,37 +100,43 @@ const route = useRoute();
 const router = useRouter();
 
 const dreamId = store.state.selectedDreamId;
-console.log("The dream id is:", dreamId);
 const dream = ref(null);
 const isShared = ref(false); // Separate state for shared status
 const editing = ref(false);
 const editedTitle = ref("");
 const editedDescription = ref("");
 
+const categories = ref([
+  { id: 1, name: "Adventure & Exploration" },
+  { id: 2, name: "Nightmares & Fears" },
+  { id: 3, name: "Relationships & Family" },
+  { id: 4, name: "Work & Career" },
+  { id: 5, name: "Learning & Discovery" },
+  { id: 6, name: "Fantasy & Mythology" },
+  { id: 7, name: "Animals & Nature" },
+  { id: 8, name: "Health & Healing" },
+  { id: 9, name: "Mystical & Spiritual" },
+  { id: 10, name: "Celebration & Joy" },
+]);
+
 const token = localStorage.getItem("token");
 
 const checkIfShared = async () => {
   try {
-    console.log("Checking if shared for dream ID:", dreamId); // Debugging log
     const response = await axios.get(
       `http://localhost:8081/api/shared-dreams/${dreamId}/dream-status`
     );
-    console.log("API response status:", response.status); // Debugging log
-    console.log("API response data:", response.data); // Debugging log
-    isShared.value = response.status === 200; // Check if the status is 200 (OK)
-    console.log("Dream shared status:", isShared.value); // Debugging log
+    isShared.value = response.status === 200;
   } catch (error) {
     if (error.response && error.response.status === 404) {
-      isShared.value = false; // Handle 404 status
-      console.log("Dream not found, setting shared status to false"); // Debugging log
+      isShared.value = false;
     } else {
-      console.error("Error fetching shared status:", error); // Debugging log
+      console.error("Error fetching shared status:", error);
     }
   }
 };
 
 const shareDream = async () => {
-  console.log("Sharing dream with id:", dreamId);
   try {
     const response = await axios.post(
       `http://localhost:8081/api/dreams/${dreamId}/share`
@@ -128,7 +153,6 @@ const shareDream = async () => {
 };
 
 const unshareDream = async () => {
-  console.log("Unsharing dream with id:", dreamId);
   try {
     const response = await axios.post(
       `http://localhost:8081/api/dreams/${dreamId}/unshare`
@@ -148,15 +172,12 @@ const unshareDream = async () => {
 onMounted(async () => {
   try {
     const response = await axios.get(
-      `http://localhost:8081/api/dreams/${dreamId}`
+      `http://localhost:8081/api/dreams/${dreamId}/fetch`
     );
-    console.log("Dream response:", response.data);
-
     dream.value = response.data;
     editedTitle.value = dream.value.title;
     editedDescription.value = dream.value.description;
     await checkIfShared();
-    console.log("Dream shared status after check:", isShared.value); // Debugging log
   } catch (error) {
     console.error(error);
   }
@@ -189,8 +210,12 @@ const formattedDate = (dateString) => {
   const options = { year: "numeric", month: "long", day: "numeric" };
   return new Date(dateString).toLocaleDateString("en-US", options);
 };
-</script>
 
+const getCategoryName = (categoryId) => {
+  const category = categories.value.find((cat) => cat.id === categoryId);
+  return category ? category.name : "Unknown Category";
+};
+</script>
 <style scoped>
 .card {
   border: 1px solid rgba(255, 255, 255, 0.125);
@@ -243,5 +268,28 @@ input.form-control:focus {
 .container {
   margin-top: 50px;
   color: white;
+}
+
+.separator {
+  border-top: 1px solid #00ccff;
+  margin: 20px 0;
+}
+
+.lucid-box,
+.regular-box {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+.lucid-box {
+  background-color: #00ccff;
+  color: #000;
+}
+
+.regular-box {
+  background-color: #888;
+  color: #fff;
 }
 </style>

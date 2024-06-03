@@ -380,6 +380,7 @@ app.put("/api/dreams/:dreamId", async (req, res) => {
     });
 });
 //for fetching dreams to save later
+//it is better
 app.get("/api/dreams/:id/fetch", (req, res) => {
   console.log("Fetch dream endpoint hit");
   const dreamId = req.params.id;
