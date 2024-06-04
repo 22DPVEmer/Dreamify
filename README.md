@@ -1,13 +1,24 @@
 # Dreamify
 
-## What's left to do:
+## What does Dreamify offer?:
+login
+signup
+add dream
+delete dream
+edit dream
+view dreams
+view dream
+share dream
+unshare dream
+comment on dream
+reply to comment
+reply to other reply with @
+statistics
+calendar of lucidity with view dreams
+filtering for everything
 
-1. **Edit:** Whether the dream is public or not, it can be removed.
-2. **Comments System:** Implement a system for comments and replies.
-3. **Page About Dreaming:** Create a page about dreaming.
-4. **Like System:** Implement a system for liking dreams.
-5. **Filtering:** Add functionality to filter dreams.
-6. **Design:** Improve the design of the application.
+
+
 
 
 ## Recommended IDE Setup
