@@ -632,14 +632,21 @@ app.get("/api/shared-dreams", async (req, res) => {
   pool
     .query(
       `
-      SELECT shared_dreams.*, dream_entries.title, dream_entries.description, users.username 
+      SELECT shared_dreams.*, dream_entries.title, dream_entries.description, dream_entries.lucid, dream_entries.category, users.username, users.avatar_url, GROUP_CONCAT(tags.tag_name SEPARATOR ',') AS tags
       FROM shared_dreams 
       INNER JOIN dream_entries ON shared_dreams.Dream_id = dream_entries.id
       INNER JOIN users ON dream_entries.user_id = users.id
+      LEFT JOIN tags ON dream_entries.id = tags.dream_id
+      GROUP BY shared_dreams.Id
       `
     )
     .then(([rows, fields]) => {
-      res.json(rows);
+      // Convert tags from string to array
+      const modifiedRows = rows.map((row) => ({
+        ...row,
+        tags: row.tags ? row.tags.split(",") : [],
+      }));
+      res.json(modifiedRows);
     })
     .catch((err) => {
       console.error(err);
@@ -1213,7 +1220,14 @@ app.get("/api/shared-dreams/:id/comments", (req, res) => {
   console.log("Comments endpoint hit");
   const dreamId = req.params.id;
   pool
-    .query(`SELECT * FROM comments WHERE dream_id = ?`, [dreamId])
+    .query(
+      `
+      SELECT comments.*, DATE_FORMAT(comments.date_posted, '%m/%d/%Y') as formatted_date, users.username, users.avatar_url
+      FROM comments 
+      INNER JOIN users ON comments.userid = users.id 
+      WHERE dream_id = ?`,
+      [dreamId]
+    )
     .then(([rows, fields]) => {
       if (rows.length === 0) {
         return res
@@ -1230,10 +1244,16 @@ app.get("/api/shared-dreams/:id/comments", (req, res) => {
 });
 
 app.get("/api/shared-dreams/comments/:id/replies", (req, res) => {
-  console.log(`Fetching replies for comment ID: ${req.params.id}`);
   const comment_id = req.params.id;
   pool
-    .query(`SELECT * FROM replies WHERE comment_id = ?`, [comment_id])
+    .query(
+      `
+      SELECT replies.*, DATE_FORMAT(replies.date_posted, '%m/%d/%Y') as formatted_date, users.username, users.avatar_url
+      FROM replies 
+      INNER JOIN users ON replies.user_id = users.id 
+      WHERE comment_id = ?`,
+      [comment_id]
+    )
     .then(([rows, fields]) => {
       if (rows.length === 0) {
         return res
@@ -2316,4 +2336,34 @@ app.get("/api/users/:userId/dreamiest-month", async (req, res) => {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+app.get("/api/users/:userId/avatar", (req, res) => {
+  const userId = req.params.userId;
+  console.log("Avatar endpoint hit");
+  pool
+    .query(`SELECT avatar_url FROM users WHERE id = ?`, [userId])
+    .then(([rows, fields]) => {
+      if (rows.length === 0) {
+        return res.status(404).json({ message: "No user found with this ID" });
+      }
+
+      res.json(rows[0]);
+    })
+    .catch((error) => {
+      console.log("SQL Error:", error); // Log the SQL error
+      res.status(500).json({ message: error.message });
+    });
+});
+
+app.get("api/users/:id/lucid-dreams", (req, res) => {
+  const userId = req.params.id;
+  const sql = "SELECT * from dream_entries  WHERE user_id = ?";
+  pool.query(sql, [userId], (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error fetching lucid dreams" });
+    } else {
+      res.json(result);
+    }
+  });
 });

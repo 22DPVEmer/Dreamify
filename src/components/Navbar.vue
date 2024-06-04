@@ -87,7 +87,7 @@ const toggleLogin = () => {
   }
 };
 function logout() {
-  console.log(isLoggedIn.value);
+  console.log("Are you logged in?", isLoggedIn.value);
 }
 logout();
 </script>

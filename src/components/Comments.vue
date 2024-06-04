@@ -1,46 +1,62 @@
 <template>
   <div v-if="showComments">
-    <div>
-      <input v-model="newComment" type="text" placeholder="Add a comment..." />
-      <button @click="submitComment">Comment</button>
+    <div class="comment-box">
+      <input
+        v-model="newComment"
+        type="text"
+        placeholder="Add a comment..."
+        class="comment-input"
+      />
+      <button @click="submitComment" class="comment-button">Comment</button>
     </div>
     <div>
       <div v-for="comment in comments" :key="comment.ID">
-        <div>
-          <h3>{{ comment.author }}</h3>
-          <div class="d-flex justify-content-between align-items-center">
-            <p class="text-white mb-0">{{ comment.Contents }}</p>
-            <font-awesome-icon
-              :icon="['fas', 'ellipsis-vertical']"
-              class="ms-auto"
-            />
-          </div>
-          <div class="d-flex align-items-center">
-            <button class="btn" @click="increaseLikes(comment)">
+        <div class="d-flex align-items-start">
+          <img
+            :src="'/backend' + comment.avatar_url"
+            alt=""
+            class="rounded-circle me-3"
+            style="width: 50px; height: 50px"
+          />
+          <div>
+            <p class="text-white mb-0">{{ comment.username }}</p>
+            <div class="d-flex justify-content-between align-items-center">
+              <p class="text-white mb-0">{{ comment.Contents }}</p>
               <font-awesome-icon
-                :icon="['fas', 'thumbs-up']"
-                :style="{
-                  color: comment.likeStatus === 'liked' ? '#00ccff' : 'white',
-                }"
+                :icon="['fas', 'ellipsis-vertical']"
+                class="ms-auto"
               />
-            </button>
-            <div class="text-white">{{ comment.Likes }}</div>
-            <button class="btn" @click="decreaseLikes(comment)">
-              <font-awesome-icon
-                :icon="['fas', 'thumbs-down']"
-                :style="{
-                  color:
-                    comment.likeStatus === 'disliked' ? '#00ccff' : 'white',
-                }"
-              />
-            </button>
-            <button class="btn text-white" @click="toggleReplies(comment)">
-              <font-awesome-icon
-                :icon="['fas', 'message']"
-                :style="{ color: 'white' }"
-              />
-              {{ comment.replies?.length || 0 }} Reply
-            </button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <p class="text-white mb-0">{{ comment.formatted_date }}</p>
+            </div>
+            <div class="d-flex align-items-center ml-3">
+              <button class="btn me-2" @click="increaseLikes(comment)">
+                <font-awesome-icon
+                  :icon="['fas', 'thumbs-up']"
+                  :style="{
+                    color: comment.likeStatus === 'liked' ? '#00ccff' : 'white',
+                  }"
+                />
+              </button>
+              <div class="text-white">{{ comment.Likes }}</div>
+              <button class="btn" @click="decreaseLikes(comment)">
+                <font-awesome-icon
+                  :icon="['fas', 'thumbs-down']"
+                  :style="{
+                    color:
+                      comment.likeStatus === 'disliked' ? '#00ccff' : 'white',
+                  }"
+                />
+              </button>
+              <button class="btn text-white" @click="toggleReplies(comment)">
+                <font-awesome-icon
+                  :icon="['fas', 'message']"
+                  :style="{ color: 'white' }"
+                />
+                {{ comment.replies?.length || 0 }} Reply
+              </button>
+            </div>
           </div>
         </div>
         <div v-if="comment.showReplies" class="replies-section">
@@ -83,6 +99,17 @@ const fetchLikeStatus = async (comment) => {
     comment.likeStatus = response.data.likeStatus;
   } catch (error) {
     console.error("Error fetching like status:", error);
+  }
+};
+const avatar = ref(null);
+const fetchavatar = async () => {
+  try {
+    const response = await axios.get(
+      `http://localhost:8081/api/users/${userId}/avatar`
+    );
+    avatar.value = response.data.avatar;
+  } catch (error) {
+    console.error("Error fetching avatar:", error);
   }
 };
 
@@ -248,7 +275,37 @@ const addReplyToComment = (commentId, newReply) => {
 </script>
 
 <style scoped>
-.replies-section {
-  margin-left: 50px;
+.comment-box {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.comment-input {
+  flex-grow: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+}
+
+.comment-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+.comment-button:hover {
+  background-color: #45a049;
 }
 </style>

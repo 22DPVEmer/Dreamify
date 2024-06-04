@@ -1,45 +1,92 @@
 <template>
   <div class="container">
-    <div class="d-flex justify-content-between align-items-center">
-      <input
-        type="text"
-        class="form-control me-5"
-        placeholder="Search by name..."
-        v-model="searchQuery"
-      />
-      <input
-        type="text"
-        class="form-control me-5"
-        placeholder="Search by tags..."
-        v-model="searchQuery"
-      />
-      <h1
-        class="my-4 me-5 text-white"
-        :class="{
-          'text-decoration-underline text-primary': selected === 'New',
-        }"
-        @click="selected = 'New'"
-      >
-        New
-      </h1>
-      <h1
-        class="my-4 me-5 text-white"
-        :class="{
-          'text-decoration-underline text-primary': selected === 'Hot',
-        }"
-        @click="selected = 'Hot'"
-      >
-        Hot
-      </h1>
-      <h1
-        class="my-4 me-5 text-white"
-        :class="{
-          'text-decoration-underline text-primary': selected === 'Top',
-        }"
-        @click="selected = 'Top'"
-      >
-        Top
-      </h1>
+    <div class="d-flex flex-column align-items-center">
+      <div class="d-flex justify-content-between align-items-center w-100">
+        <input
+          type="text"
+          class="form-control me-2"
+          placeholder="Search by name..."
+          v-model="searchQuery"
+        />
+
+        <h1
+          class="my-4 me-2 text-white"
+          :class="{
+            'text-decoration-underline text-primary': selected === 'New',
+          }"
+          @click="selected = 'New'"
+        >
+          New
+        </h1>
+        <h1
+          class="my-4 me-2 text-white"
+          :class="{
+            'text-decoration-underline text-primary': selected === 'Hot',
+          }"
+          @click="selected = 'Hot'"
+        >
+          Hot
+        </h1>
+        <h1
+          class="my-4 me-2 text-white"
+          :class="{
+            'text-decoration-underline text-primary': selected === 'Top',
+          }"
+          @click="selected = 'Top'"
+        >
+          Top
+        </h1>
+      </div>
+      <div class="filter-controls mb-4 w-100">
+        <div class="text-center mb-2">
+          <h5 class="text-white">Lucidity</h5>
+          <div class="d-flex justify-content-center">
+            <div class="form-check form-check-inline text-white">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="lucidCheckbox"
+                v-model="lucidFilter"
+              />
+              <label class="form-check-label" for="lucidCheckbox">Lucid</label>
+            </div>
+            <div class="form-check form-check-inline text-white">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="nonLucidCheckbox"
+                v-model="nonLucidFilter"
+              />
+              <label class="form-check-label" for="nonLucidCheckbox"
+                >Non-Lucid</label
+              >
+            </div>
+          </div>
+        </div>
+        <div class="text-center mb-2">
+          <h5 class="text-white">Categories</h5>
+          <div class="d-flex justify-content-center flex-wrap">
+            <div
+              class="form-check form-check-inline text-white"
+              v-for="category in categories"
+              :key="category.id"
+            >
+              <input
+                class="form-check-input"
+                type="checkbox"
+                :id="'category-' + category.id"
+                :value="category.id"
+                v-model="categoryFilter"
+              />
+              <label
+                class="form-check-label"
+                :for="'category-' + category.id"
+                >{{ category.name }}</label
+              >
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div v-if="loading">Loading...</div>
     <div
@@ -49,8 +96,15 @@
       class="card text-white bg-dark mb-3"
     >
       <div class="card-body">
+        <img
+          :src="'/backend' + dream.avatar_url"
+          alt=""
+          class="rounded-circle me-3"
+          style="width: 50px; height: 50px"
+        />
         <p class="card-text text-white">{{ dream.username }}</p>
         <h2 class="card-title text-white">{{ dream.title }}</h2>
+
         <p class="card-text text-white">
           {{ getShortDescription(dream) }}
           <span v-if="dream.description.length > 100">
@@ -59,6 +113,22 @@
             </a>
           </span>
         </p>
+        <p class="card-text">
+          <span
+            class="text-primary"
+            v-for="(tag, index) in dream.tags"
+            :key="index"
+          >
+            #{{ tag }}
+          </span>
+        </p>
+        <p class="card-text">
+          <span>{{ getCategoryName(dream.category) }}</span>
+        </p>
+        <p class="card-text">
+          <span>{{ getDreamLucidity(dream.lucid) }}</span>
+        </p>
+
         <p class="card-text text-white">
           {{ new Date(dream.Date).toLocaleDateString() }}
         </p>
@@ -107,6 +177,7 @@
     </div>
   </div>
 </template>
+
 <script setup>
 import { ref, reactive, onMounted, watch, computed } from "vue";
 import axios from "axios";
@@ -114,22 +185,59 @@ import { jwtDecode } from "jwt-decode";
 import Comments from "../components/Comments.vue";
 
 const searchQuery = ref("");
+const tagQuery = ref("");
 const sharedDreams = reactive([]);
 const loading = ref(true);
 const selected = ref("New");
+const lucidFilter = ref(true);
+const nonLucidFilter = ref(true);
+const categoryFilter = ref([]);
 
 const token = localStorage.getItem("token");
 const decodedToken = jwtDecode(token);
 const userId = decodedToken.userId;
 
 const filteredDreams = computed(() => {
-  if (!searchQuery.value) {
-    return sharedDreams;
-  }
-  return sharedDreams.filter((dream) =>
-    dream.title.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  return sharedDreams.filter((dream) => {
+    const matchesSearchQuery =
+      dream.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      dream.tags.some((tag) =>
+        tag.toLowerCase().includes(tagQuery.value.toLowerCase())
+      );
+
+    const matchesLucidity =
+      (lucidFilter.value && dream.lucid === 1) ||
+      (nonLucidFilter.value && dream.lucid === 0);
+
+    const matchesCategory =
+      categoryFilter.value.length === 0 ||
+      categoryFilter.value.includes(dream.category);
+
+    return matchesSearchQuery && matchesLucidity && matchesCategory;
+  });
 });
+
+const getDreamLucidity = (lucid) => {
+  return lucid === 1 ? "Lucid" : "Not lucid";
+};
+
+const categories = ref([
+  { id: 1, name: "Adventure & Exploration" },
+  { id: 2, name: "Nightmares & Fears" },
+  { id: 3, name: "Relationships & Family" },
+  { id: 4, name: "Work & Career" },
+  { id: 5, name: "Learning & Discovery" },
+  { id: 6, name: "Fantasy & Mythology" },
+  { id: 7, name: "Animals & Nature" },
+  { id: 8, name: "Health & Healing" },
+  { id: 9, name: "Mystical & Spiritual" },
+  { id: 10, name: "Celebration & Joy" },
+]);
+
+const getCategoryName = (categoryId) => {
+  const category = categories.value.find((cat) => cat.id === categoryId);
+  return category ? category.name : "Unknown Category";
+};
 
 const fetchDreams = async () => {
   loading.value = true;
@@ -145,6 +253,7 @@ const fetchDreams = async () => {
       }));
 
       for (const dream of dreams) {
+        console.log("Fetching like status for dream:", dream);
         try {
           const response = await axios.get(
             `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/likeStatus`
@@ -268,6 +377,7 @@ const toggleFullText = (dream) => {
   dream.showFullText = !dream.showFullText;
 };
 </script>
+
 <style scoped>
 .comments-section {
   margin-left: 50px; /* Adjust the margin as needed */

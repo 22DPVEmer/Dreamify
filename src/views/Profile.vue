@@ -11,11 +11,63 @@
         <div class="text-center mb-4">
           <input
             type="text"
-            class="form-control mx-auto"
-            placeholder="Search by name..."
+            class="form-control mx-auto text-white bg-dark border-info"
+            placeholder="Search by title or tag..."
             v-model="searchQuery"
-            style="width: 200px"
+            style="width: 300px"
           />
+        </div>
+        <div class="filter-controls mb-4">
+          <div class="text-center mb-2">
+            <h5 class="text-white">Lucidity</h5>
+            <div class="d-flex justify-content-center">
+              <div class="form-check form-check-inline text-white">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="lucidCheckbox"
+                  v-model="lucidFilter"
+                />
+                <label class="form-check-label" for="lucidCheckbox"
+                  >Lucid</label
+                >
+              </div>
+              <div class="form-check form-check-inline text-white">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="nonLucidCheckbox"
+                  v-model="nonLucidFilter"
+                />
+                <label class="form-check-label" for="nonLucidCheckbox"
+                  >Non-Lucid</label
+                >
+              </div>
+            </div>
+          </div>
+          <div class="text-center mb-2">
+            <h5 class="text-white">Categories</h5>
+            <div class="d-flex justify-content-center flex-wrap">
+              <div
+                class="form-check form-check-inline text-white"
+                v-for="category in categories"
+                :key="category.id"
+              >
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  :id="'category-' + category.id"
+                  :value="category.id"
+                  v-model="categoryFilter"
+                />
+                <label
+                  class="form-check-label"
+                  :for="'category-' + category.id"
+                  >{{ category.name }}</label
+                >
+              </div>
+            </div>
+          </div>
         </div>
         <div class="d-flex flex-column flex-md-row">
           <div class="flex-grow-1">
@@ -101,7 +153,6 @@
 import { ref, onMounted, computed } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import router from "@/router";
 import store from "../store/store.js";
 
 const user = ref(null);
@@ -114,6 +165,9 @@ const dreamiestDay = ref("");
 const dreamiestMonth = ref("");
 const loading = ref(true);
 const searchQuery = ref("");
+const lucidFilter = ref(true);
+const nonLucidFilter = ref(true);
+const categoryFilter = ref([]);
 
 const categories = ref([
   { id: 1, name: "Adventure & Exploration" },
@@ -127,12 +181,14 @@ const categories = ref([
   { id: 9, name: "Mystical & Spiritual" },
   { id: 10, name: "Celebration & Joy" },
 ]);
+
 const getCategoryName = (categoryId) => {
   const category = categories.value.find((cat) => cat.id === categoryId);
   return category ? category.name : "Unknown Category";
 };
+
 const getDreamLucidity = (lucid) => {
-  return lucid === 1 ? "Lucid" : "Regular";
+  return lucid === 1 ? "Lucid" : "Not lucid";
 };
 
 const selectDream = (id) => {
@@ -140,12 +196,23 @@ const selectDream = (id) => {
 };
 
 const filteredDreams = computed(() => {
-  if (!searchQuery.value) {
-    return dreams.value;
-  }
-  return dreams.value.filter((dream) =>
-    dream.title.toLowerCase().includes(searchQuery.value.toLowerCase())
-  );
+  return dreams.value.filter((dream) => {
+    const matchesSearchQuery =
+      dream.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      dream.tags.some((tag) =>
+        tag.toLowerCase().includes(searchQuery.value.toLowerCase())
+      );
+
+    const matchesLucidity =
+      (lucidFilter.value && dream.lucid === 1) ||
+      (nonLucidFilter.value && dream.lucid === 0);
+
+    const matchesCategory =
+      categoryFilter.value.length === 0 ||
+      categoryFilter.value.includes(dream.category);
+
+    return matchesSearchQuery && matchesLucidity && matchesCategory;
+  });
 });
 
 const formatDate = (dateStr) => {
@@ -157,10 +224,6 @@ const formatDate = (dateStr) => {
   });
 };
 
-const formatMonth = (date) => {
-  return date.toLocaleString("en-US", { month: "long", year: "numeric" });
-};
-
 const popularCategoryName = computed(() => {
   const category = categories.value.find(
     (cat) => cat.id === popularCategory.value
@@ -170,7 +233,6 @@ const popularCategoryName = computed(() => {
 
 onMounted(async () => {
   const token = localStorage.getItem("token");
-  console.log("Token:", token);
 
   const decodedToken = jwtDecode(token);
   const userId = decodedToken.userId;

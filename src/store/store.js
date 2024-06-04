@@ -11,7 +11,12 @@ const getInitialState = () => {
     try {
       const decodedToken = jwtDecode(token); // decode without verification
       userId = decodedToken.userId;
-      isLoggedIn = true;
+      console.log("userId", userId);
+      if (userId) {
+        isLoggedIn = true;
+      } else {
+        console.error("Invalid token: userId is null");
+      }
     } catch (error) {
       console.error("Invalid token:", error);
     }

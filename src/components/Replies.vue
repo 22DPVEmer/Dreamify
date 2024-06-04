@@ -1,15 +1,33 @@
 <template>
   <div v-if="showReplies">
-    <div>
-      <input v-model="newReply" type="text" placeholder="Add a reply..." />
-      <button @click="submitReply">Reply</button>
+    <div class="reply-box">
+      <input
+        v-model="newReply"
+        type="text"
+        placeholder="Add a reply..."
+        class="reply-input"
+      />
+      <button @click="submitReply" class="reply-button">Reply</button>
     </div>
     <div>
       <div v-for="reply in replies" :key="reply.Id">
         <div>
-          <h3>{{ reply.author }}</h3>
+          <div class="d-flex justify-content-between align-items-center">
+            <p class="text-white mb-0">{{ reply.username }}</p>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-vertical']"
+              class="ms-auto"
+            />
+          </div>
           <div class="d-flex justify-content-between align-items-center">
             <p class="text-white mb-0">{{ reply.Contents }}</p>
+            <font-awesome-icon
+              :icon="['fas', 'ellipsis-vertical']"
+              class="ms-auto"
+            />
+          </div>
+          <div class="d-flex justify-content-between align-items-center">
+            <p class="text-white mb-0">{{ reply.formatted_date }}</p>
             <font-awesome-icon
               :icon="['fas', 'ellipsis-vertical']"
               class="ms-auto"
@@ -197,5 +215,37 @@ const decreaseLikes = async (reply) => {
 </script>
 
 <style scoped>
-/* Add any styles you need */
+.reply-box {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.reply-input {
+  flex-grow: 1;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+}
+
+.reply-button {
+  background-color: #1e90ff;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+.reply-button:hover {
+  background-color: #1c86ee;
+}
 </style>
