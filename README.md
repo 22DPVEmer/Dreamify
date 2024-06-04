@@ -1,13 +1,30 @@
 # Dreamify
+## What is Dreamify?
+A website for sharing dreams, tracking your dreaming consistency, and sharing them with others with a modern design suitable for people of all ages.
 
-## What's left to do:
+## What Does Dreamify Offer?
+1. **Login Page**
+2. **Signup Page**
+3. **Password Reset Page**
+4. **Dream Management Options**:
+   - Add Dream
+   - Delete Dream
+   - Edit Dream
+5. **View Dream Journal with Statistics**
+6. **View Specific Dream**
+7. **Dream Sharing Features**:
+   - Share Dream to Dreamboard: A section where all shared dreams from all users are stored for registered users to see.
+   - Unshare Dream: Make dreams private instead of public.
+8. **Commenting System**:
+   - Comment on Dreams
+   - Reply to Comments
+   - Reply to Other Replies
+9. **Statistics**
+10. **Custom Filtering**
+11. **Calendar of Lucidity with Dream Views**
 
-1. **Edit:** Whether the dream is public or not, it can be removed.
-2. **Comments System:** Implement a system for comments and replies.
-3. **Page About Dreaming:** Create a page about dreaming.
-4. **Like System:** Implement a system for liking dreams.
-5. **Filtering:** Add functionality to filter dreams.
-6. **Design:** Improve the design of the application.
+
+
 
 
 ## Recommended IDE Setup
