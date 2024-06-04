@@ -2157,3 +2157,150 @@ app.post(
       });
   }
 );
+
+//streaks
+app.get("/api/users/:userId/streaks", async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    // Fetch distinct dates for the user's dream entries
+    const [rows] = await pool.query(
+      `SELECT DISTINCT DATE(date) AS date FROM dream_entries WHERE user_id = ? ORDER BY date ASC`,
+      [userId]
+    );
+
+    // Initialize streak counters
+    let currentStreak = 0;
+    let longestStreak = 0;
+    let tempStreak = 1;
+
+    // Calculate streaks
+    for (let i = 1; i < rows.length; i++) {
+      const prevDate = new Date(rows[i - 1].date);
+      const currDate = new Date(rows[i].date);
+      const diffTime = Math.abs(currDate - prevDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        tempStreak++;
+      } else {
+        if (tempStreak > longestStreak) {
+          longestStreak = tempStreak;
+        }
+        tempStreak = 1; // Reset streak
+      }
+    }
+
+    // Final check for the last streak
+    if (tempStreak > longestStreak) {
+      longestStreak = tempStreak;
+    }
+
+    // Determine the current streak
+    const lastEntryDate = new Date(rows[rows.length - 1].date);
+    const currentDate = new Date();
+    const diffTime = Math.abs(currentDate - lastEntryDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      currentStreak = tempStreak;
+    } else {
+      currentStreak = 0;
+    }
+
+    res.json({
+      current_streak: currentStreak,
+      longest_streak: longestStreak,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/api/users/:userId/lucid-dreams", async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS lucidDreamCount FROM dream_entries WHERE user_id = ? AND lucid = 1`,
+      [userId]
+    );
+
+    res.json({
+      lucidDreamCount: rows[0].lucidDreamCount,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/api/users/:userId/popular-category", async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT category, COUNT(*) AS count 
+       FROM dream_entries 
+       WHERE user_id = ? AND category IS NOT NULL AND category != ''
+       GROUP BY category 
+       ORDER BY count DESC 
+       LIMIT 1`,
+      [userId]
+    );
+
+    res.json({
+      popularCategory: rows[0] ? rows[0].category : null,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/api/users/:userId/dreamiest-day", async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT DAYNAME(date) as day, COUNT(*) as count
+       FROM dream_entries
+       WHERE user_id = ?
+       GROUP BY day
+       ORDER BY count DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    res.json({
+      dreamiestDay: rows[0] ? rows[0].day : null,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/api/users/:userId/dreamiest-month", async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT DATE_FORMAT(date, '%M') as month, COUNT(*) as count
+       FROM dream_entries
+       WHERE user_id = ?
+       GROUP BY month
+       ORDER BY count DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    res.json({
+      dreamiestMonth: rows[0] ? rows[0].month : null,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});

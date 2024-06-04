@@ -61,12 +61,19 @@
           <div class="statistics bg-dark text-white p-3 ms-md-4 mt-4 mt-md-0">
             <h4>Dreaming Statistics</h4>
             <p><strong>Tracked Dreams:</strong> {{ dreams.length }}</p>
-            <p><strong>Current dream streak:</strong> 0</p>
+            <p><strong>Current dream streak:</strong> {{ currentStreak }}</p>
+            <p><strong>Longest dream streak:</strong> {{ longestStreak }}</p>
             <p><strong>Dreams Each Week:</strong> 0</p>
-            <p><strong>Is Your Dreamiest Day:</strong> Sunday</p>
+            <p>
+              <strong>Number of Lucid dreams:</strong> {{ lucidDreamCount }}
+            </p>
+            <p>
+              <strong>Most popular category:</strong> {{ popularCategoryName }}
+            </p>
+            <p><strong>Is Your Dreamiest Day:</strong> {{ dreamiestDay }}</p>
             <p>
               <strong>Was Your Dreamiest Month:</strong>
-              {{ formatMonth(new Date()) }}
+              {{ dreamiestMonth }}
             </p>
           </div>
         </div>
@@ -84,8 +91,27 @@ import store from "../store/store.js";
 
 const user = ref(null);
 const dreams = ref([]);
+const currentStreak = ref(0);
+const longestStreak = ref(0);
+const lucidDreamCount = ref(0);
+const popularCategory = ref("");
+const dreamiestDay = ref("");
+const dreamiestMonth = ref("");
 const loading = ref(true);
 const searchQuery = ref("");
+
+const categories = ref([
+  { id: 1, name: "Adventure & Exploration" },
+  { id: 2, name: "Nightmares & Fears" },
+  { id: 3, name: "Relationships & Family" },
+  { id: 4, name: "Work & Career" },
+  { id: 5, name: "Learning & Discovery" },
+  { id: 6, name: "Fantasy & Mythology" },
+  { id: 7, name: "Animals & Nature" },
+  { id: 8, name: "Health & Healing" },
+  { id: 9, name: "Mystical & Spiritual" },
+  { id: 10, name: "Celebration & Joy" },
+]);
 
 const selectDream = (id) => {
   store.commit("setSelectedDreamId", id);
@@ -112,6 +138,13 @@ const formatDate = (dateStr) => {
 const formatMonth = (date) => {
   return date.toLocaleString("en-US", { month: "long", year: "numeric" });
 };
+
+const popularCategoryName = computed(() => {
+  const category = categories.value.find(
+    (cat) => cat.id === popularCategory.value
+  );
+  return category ? category.name : "No Category";
+});
 
 onMounted(async () => {
   const token = localStorage.getItem("token");
@@ -143,6 +176,52 @@ onMounted(async () => {
 
     console.log("Dreams:", dreams.value);
     console.log("User:", user.value);
+
+    // Fetch the streaks
+    const streaksResponse = await axios.get(
+      `http://localhost:8081/api/users/${userId}/streaks`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    currentStreak.value = streaksResponse.data.current_streak;
+    longestStreak.value = streaksResponse.data.longest_streak;
+
+    // Fetch the number of lucid dreams
+    const lucidDreamsResponse = await axios.get(
+      `http://localhost:8081/api/users/${userId}/lucid-dreams`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    lucidDreamCount.value = lucidDreamsResponse.data.lucidDreamCount;
+
+    // Fetch the most popular category
+    const popularCategoryResponse = await axios.get(
+      `http://localhost:8081/api/users/${userId}/popular-category`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    popularCategory.value = popularCategoryResponse.data.popularCategory;
+
+    // Fetch the dreamiest day
+    const dreamiestDayResponse = await axios.get(
+      `http://localhost:8081/api/users/${userId}/dreamiest-day`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    dreamiestDay.value = dreamiestDayResponse.data.dreamiestDay;
+
+    // Fetch the dreamiest month
+    const dreamiestMonthResponse = await axios.get(
+      `http://localhost:8081/api/users/${userId}/dreamiest-month`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    dreamiestMonth.value = dreamiestMonthResponse.data.dreamiestMonth;
   } catch (error) {
     console.error(error);
   } finally {
