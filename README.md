@@ -1,6 +1,6 @@
 # Dreamify
 ## What is Dreamify?
-A website for sharing dreams, tracking your dreming consistency and sharing them with others with a modern design suitable for people of all ages.
+A website for sharing dreams, tracking your dreaming consistency, and sharing them with others with a modern design suitable for people of all ages.
 
 ## What Does Dreamify Offer?
 1. **Login Page**
