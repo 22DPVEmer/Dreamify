@@ -53,6 +53,21 @@
                 </h5>
                 <p class="card-text">{{ dream.description }}</p>
                 <p class="card-text">
+                  <span
+                    class="text-primary"
+                    v-for="(tag, index) in dream.tags"
+                    :key="index"
+                  >
+                    #{{ tag }}
+                  </span>
+                </p>
+                <p class="card-text">
+                  <span>{{ getCategoryName(dream.category) }}</span>
+                </p>
+                <p class="card-text">
+                  <span>{{ getDreamLucidity(dream.lucid) }}</span>
+                </p>
+                <p class="card-text">
                   <small class="text-muted">{{ formatDate(dream.date) }}</small>
                 </p>
               </div>
@@ -112,6 +127,13 @@ const categories = ref([
   { id: 9, name: "Mystical & Spiritual" },
   { id: 10, name: "Celebration & Joy" },
 ]);
+const getCategoryName = (categoryId) => {
+  const category = categories.value.find((cat) => cat.id === categoryId);
+  return category ? category.name : "Unknown Category";
+};
+const getDreamLucidity = (lucid) => {
+  return lucid === 1 ? "Lucid" : "Regular";
+};
 
 const selectDream = (id) => {
   store.commit("setSelectedDreamId", id);

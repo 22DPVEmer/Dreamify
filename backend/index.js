@@ -203,7 +203,7 @@ async function showCreateTable() {
   });
 
   try {
-    const [rows] = await connection.query("SHOW CREATE TABLE `replies`");
+    const [rows] = await connection.query("SHOW CREATE TABLE `tags`");
     if (rows && rows.length > 0) {
       console.log(rows[0]["Create Table"]);
     } else {
@@ -315,13 +315,26 @@ app.get("/api/users/:userId/dreams", async (req, res) => {
       res.status(401).json({ message: "Unauthorized" });
     } else {
       const userId = req.params.userId;
-
       // Query the database
       pool
-        .query("SELECT * FROM dream_entries WHERE user_id = ?", [userId])
+        .query(
+          `
+          SELECT dream_entries.*, GROUP_CONCAT(tags.tag_name SEPARATOR ',') AS tags
+          FROM dream_entries 
+          LEFT JOIN tags ON dream_entries.id = tags.dream_id
+          WHERE dream_entries.user_id = ?
+          GROUP BY dream_entries.id
+        `,
+          [userId]
+        )
         .then(([rows, fields]) => {
           if (rows.length > 0) {
-            res.json(rows); // If the user has dreams, sed them
+            // Convert tags from string to array
+            const modifiedRows = rows.map((row) => ({
+              ...row,
+              tags: row.tags ? row.tags.split(",") : [],
+            }));
+            res.json(modifiedRows); // If the user has dreams, send them
           } else {
             res.status(404).json({ message: "No dreams found for this user" }); // If the user has no dreams, send an error
           }
