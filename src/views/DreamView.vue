@@ -101,7 +101,7 @@ const router = useRouter();
 
 const dreamId = store.state.selectedDreamId;
 const dream = ref(null);
-const isShared = ref(false); // Separate state for shared status
+const isShared = ref(false);
 const editing = ref(false);
 const editedTitle = ref("");
 const editedDescription = ref("");

@@ -383,7 +383,7 @@ const toggleFullText = (dream) => {
   color: #ccc;
 }
 .comments-section {
-  margin-left: 50px; /* Adjust the margin as needed */
+  margin-left: 50px;
 }
 
 .container {

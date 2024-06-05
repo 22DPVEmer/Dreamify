@@ -99,7 +99,7 @@ export default {
   setup() {
     const isLoggedIn = ref(false);
     const invalidCredentials = ref(false);
-    const router = useRouter(); // Use the useRouter hook
+    const router = useRouter();
 
     async function login() {
       try {
@@ -122,7 +122,7 @@ export default {
           localStorage.setItem("token", data.token);
 
           store.dispatch("login");
-          router.push("/user"); // Use router instance to navigate
+          router.push("/user");
         } else {
           invalidCredentials.value = true;
         }

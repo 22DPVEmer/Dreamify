@@ -147,6 +147,9 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import VueCropper from "vue-cropperjs";
 import "cropperjs/dist/cropper.css";
+import store from "../store/store.js";
+import { useRouter } from "vue-router";
+const router = useRouter();
 
 const user = ref({});
 const loading = ref(true);
@@ -232,7 +235,10 @@ const cancelCropping = () => {
 
 const deletion = async () => {
   const token = localStorage.getItem("token");
-
+  alert("User profile deleted successfully.");
+  localStorage.removeItem("token");
+  store.dispatch("logout");
+  router.push("/");
   try {
     const response = await axios.delete(
       `http://localhost:8081/api/userDelete/${user.value.id}`,
@@ -240,11 +246,6 @@ const deletion = async () => {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
-    if (response.status === 200) {
-      alert("User profile deleted successfully.");
-      localStorage.removeItem("token");
-      this.$router.push("/login");
-    }
   } catch (error) {
     console.error(
       "Error deleting user profile:",

@@ -86,10 +86,6 @@ const toggleLogin = () => {
     router.push("/login");
   }
 };
-function logout() {
-  console.log("Are you logged in?", isLoggedIn.value);
-}
-logout();
 </script>
 
 <style scoped>

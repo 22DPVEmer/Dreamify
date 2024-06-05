@@ -253,7 +253,6 @@ onMounted(async () => {
       }
     );
 
-    // Sort the dreams by date in descending order (most recent first)
     dreams.value = dreamsResponse.data.sort(
       (a, b) => new Date(b.date) - new Date(a.date)
     );
@@ -261,7 +260,6 @@ onMounted(async () => {
     console.log("Dreams:", dreams.value);
     console.log("User:", user.value);
 
-    // Fetch the streaks
     const streaksResponse = await axios.get(
       `http://localhost:8081/api/users/${userId}/streaks`,
       {
@@ -271,7 +269,6 @@ onMounted(async () => {
     currentStreak.value = streaksResponse.data.current_streak;
     longestStreak.value = streaksResponse.data.longest_streak;
 
-    // Fetch the number of lucid dreams
     const lucidDreamsResponse = await axios.get(
       `http://localhost:8081/api/users/${userId}/lucid-dreams`,
       {
@@ -280,7 +277,6 @@ onMounted(async () => {
     );
     lucidDreamCount.value = lucidDreamsResponse.data.lucidDreamCount;
 
-    // Fetch the most popular category
     const popularCategoryResponse = await axios.get(
       `http://localhost:8081/api/users/${userId}/popular-category`,
       {
@@ -289,7 +285,6 @@ onMounted(async () => {
     );
     popularCategory.value = popularCategoryResponse.data.popularCategory;
 
-    // Fetch the dreamiest day
     const dreamiestDayResponse = await axios.get(
       `http://localhost:8081/api/users/${userId}/dreamiest-day`,
       {
@@ -298,7 +293,6 @@ onMounted(async () => {
     );
     dreamiestDay.value = dreamiestDayResponse.data.dreamiestDay;
 
-    // Fetch the dreamiest month
     const dreamiestMonthResponse = await axios.get(
       `http://localhost:8081/api/users/${userId}/dreamiest-month`,
       {

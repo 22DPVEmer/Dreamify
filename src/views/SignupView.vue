@@ -290,7 +290,6 @@ export default {
       this.validationErrors = this.validateInput();
 
       if (Object.keys(this.validationErrors).length === 0) {
-        // Combine year, month, day into a single date_of_birth field
         const date_of_birth = this.formatDate(
           this.formData.year,
           this.formData.month,
@@ -299,7 +298,7 @@ export default {
 
         const userData = {
           ...this.formData,
-          date_of_birth, // Add the combined date_of_birth field
+          date_of_birth,
         };
 
         try {
@@ -316,13 +315,11 @@ export default {
           if (response.status >= 200 && response.status < 300) {
             alert("Signup successful!");
 
-            // Store the token in local storage
             console.log("Token:", response.data.token);
             localStorage.setItem("token", response.data.token);
 
-            store.dispatch("login"); // Dispatch login action investigated in the previous chapter
+            store.dispatch("login");
 
-            // Redirect to user view
             this.$router.push("/user");
           } else {
             alert("Signup failed!");

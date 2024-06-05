@@ -1820,7 +1820,7 @@ app.put("/api/users/settings/:id", (req, res) => {
 app.delete("/api/userDelete/:id", (req, res) => {
   const { id } = req.params;
   const sql = "DELETE FROM users WHERE id = ?";
-  db.query(sql, [id], (err, result) => {
+  pool.query(sql, [id], (err, result) => {
     if (err) {
       res.status(500).json({ message: "Error deleting user" });
     } else {
@@ -2000,14 +2000,12 @@ app.post("/api/shared-dreams/replies/:id/:userid/dislike", async (req, res) => {
           ])
           .then(([rows, fields]) => {
             if (rows.length > 0) {
-              // The user has liked this reply, so remove the like and add the dislike
               pool
                 .query(
                   `UPDATE reply_likes SET disliked = TRUE WHERE UserId = ? AND ReplyId = ?`,
                   [userId, replyId]
                 )
                 .then(([rows, fields]) => {
-                  // Decrement the like count in the replies table if not null
                   pool
                     .query(
                       `UPDATE replies SET Likes = Likes - 1 WHERE Id = ?`,
@@ -2018,14 +2016,12 @@ app.post("/api/shared-dreams/replies/:id/:userid/dislike", async (req, res) => {
                     });
                 });
             } else {
-              // The user has not liked this reply yet, so just add the dislike
               pool
                 .query(
                   `INSERT INTO reply_likes (UserId, ReplyId, disliked) VALUES (?, ?, TRUE)`,
                   [userId, replyId]
                 )
                 .then(([rows, fields]) => {
-                  // Decrement the like count in the replies table if not null
                   pool
                     .query(
                       `UPDATE replies SET Likes = Likes - 1 WHERE Id = ?`,
@@ -2044,14 +2040,13 @@ app.post("/api/shared-dreams/replies/:id/:userid/dislike", async (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 });
-// undislike a reply
+
 app.post(
   "/api/shared-dreams/replies/:id/:userid/undislike",
   async (req, res) => {
     const replyId = req.params.id;
     const userId = req.params.userid;
 
-    // Check if the user has already disliked this reply
     pool
       .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
         userId,
@@ -2059,14 +2054,12 @@ app.post(
       ])
       .then(([rows, fields]) => {
         if (rows.length > 0 && rows[0].disliked) {
-          // The user has disliked this reply, so remove the dislike
           pool
             .query(`DELETE FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
               userId,
               replyId,
             ])
             .then(([rows, fields]) => {
-              // Only increase likes if the dislike record was successfully deleted
               if (rows.affectedRows > 0) {
                 pool
                   .query(`UPDATE replies SET Likes = Likes + 1 WHERE Id = ?`, [
@@ -2080,7 +2073,6 @@ app.post(
               }
             });
         } else {
-          // The user has not disliked this reply
           res.status(400).json({ message: "You have not disliked this reply" });
         }
       })
@@ -2091,15 +2083,12 @@ app.post(
   }
 );
 
-// dislike from like a reply
-
 app.post(
   "/api/shared-dreams/replies/:id/:userid/dislikeFromLike",
   async (req, res) => {
     const replyId = req.params.id;
     const userId = req.params.userid;
 
-    // Check if the user has already liked or disliked this reply
     pool
       .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
         userId,
@@ -2107,9 +2096,7 @@ app.post(
       ])
       .then(([rows, fields]) => {
         if (rows.length > 0) {
-          // The user has already liked or disliked this reply
           if (!rows[0].disliked) {
-            // The user has liked this reply, so change it to a dislike and decrease the likes count by 2
             pool
               .query(`UPDATE replies SET Likes = Likes - 2 WHERE Id = ?`, [
                 replyId,
@@ -2125,13 +2112,11 @@ app.post(
                   });
               });
           } else {
-            // The user has already disliked this reply
             res
               .status(400)
               .json({ message: "You have already disliked this reply" });
           }
         } else {
-          // The user has not liked or disliked this reply yet, so return an error
           res
             .status(400)
             .json({ message: "You have not liked this reply yet" });
@@ -2150,7 +2135,6 @@ app.post(
     const replyId = req.params.id;
     const userId = req.params.userid;
 
-    // Check if the user has already liked or disliked this reply
     pool
       .query(`SELECT * FROM reply_likes WHERE UserId = ? AND ReplyId = ?`, [
         userId,
@@ -2158,9 +2142,7 @@ app.post(
       ])
       .then(([rows, fields]) => {
         if (rows.length > 0) {
-          // The user has already liked or disliked this reply
           if (rows[0].disliked) {
-            // The user has disliked this reply, so change it to a like and increase the likes count by 2
             pool
               .query(`UPDATE replies SET Likes = Likes + 2 WHERE Id = ?`, [
                 replyId,
@@ -2176,13 +2158,11 @@ app.post(
                   });
               });
           } else {
-            // The user has already liked this reply
             res
               .status(400)
               .json({ message: "You have already liked this reply" });
           }
         } else {
-          // The user has not liked or disliked this reply yet, so return an error
           res
             .status(400)
             .json({ message: "You have not disliked this reply yet" });
