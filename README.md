@@ -59,3 +59,13 @@ npm run dev
 ```sh
 npm run build
 ```
+
+## tabula
+| Test case id | Test scenario                                                 | Expected result                                                                                  | Actual result                                                                                  | Status |
+|--------------|---------------------------------------------------------------|--------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|--------|
+| 1            | User registration with all required fields correctly filled. | User is successfully registered and redirected to the login page                                | User successfully registered and redirected to the login page                                | Passed |
+| 2            | User attempts to register without inputting any of the fields.| Under registration form, an error is displayed indicating missing fields.                        | Under registration form, an error is displayed indicating missing fields.                      | Passed |
+| 3            | User logs in with the correct email and password.             | User is successfully logged in, redirected to the home page, and sees new navigation tabs.       | User successfully logged in, redirected to the home page, and sees new navigation tabs.         | Passed |
+| 4            | User logs in with incorrect details.                          | Under login form, an error is displayed indicating invalid details.                               | Under login form, an error is displayed indicating invalid details.                             | Passed |
+| 5            | User clicks the “Profile” button in the navigation bar.       | User is directed to the profile page, and their information is displayed.                        | User is directed to the profile page, and their information is displayed.                      | Passed |
+
