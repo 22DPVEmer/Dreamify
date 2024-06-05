@@ -1,7 +1,12 @@
 # Dreamify
 ## What is Dreamify?
 A website for sharing dreams, tracking your dreaming consistency, and sharing them with others with a modern design suitable for people of all ages.
-
+## Technologies used:
+1. Vue.js
+2. Node.js
+3. Express
+4. Bootstrap
+5. Javascript + libraries
 ## What Does Dreamify Offer?
 1. **Login Page**
 2. **Signup Page**
