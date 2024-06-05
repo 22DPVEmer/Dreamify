@@ -7,6 +7,7 @@ A website for sharing dreams, tracking your dreaming consistency, and sharing th
 3. Express
 4. Bootstrap
 5. Javascript + libraries
+6. HTML + vanilla CSS
 ## What Does Dreamify Offer?
 1. **Login Page**
 2. **Signup Page**
