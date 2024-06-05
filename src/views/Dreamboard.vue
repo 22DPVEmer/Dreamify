@@ -4,9 +4,10 @@
       <div class="d-flex justify-content-between align-items-center w-100">
         <input
           type="text"
-          class="form-control me-2"
-          placeholder="Search by name..."
+          class="form-control me-2 text-white bg-dark border-info"
+          placeholder="Search by title or tag..."
           v-model="searchQuery"
+          style="width: 300px"
         />
 
         <h1
@@ -253,14 +254,13 @@ const fetchDreams = async () => {
       }));
 
       for (const dream of dreams) {
-        console.log("Fetching like status for dream:", dream);
         try {
           const response = await axios.get(
             `http://localhost:8081/api/shared-dreams/${dream.Id}/${userId}/likeStatus`
           );
           dream.likeStatus = response.data.likeStatus || "neutral";
         } catch (error) {
-          console.error("Error fetching like status:", error);
+          //console.error("Error fetching like status:", error);
         }
 
         try {
@@ -269,7 +269,7 @@ const fetchDreams = async () => {
           );
           dream.comments = commentsResponse.data;
         } catch (error) {
-          console.error("Error fetching comments:", error);
+          //console.error("Error fetching comments:", error);
         }
       }
       sharedDreams.push(...dreams);
@@ -379,10 +379,13 @@ const toggleFullText = (dream) => {
 </script>
 
 <style scoped>
+.form-control::placeholder {
+  color: #ccc;
+}
 .comments-section {
   margin-left: 50px; /* Adjust the margin as needed */
 }
-/* Base styles */
+
 .container {
   margin-top: 200px;
   color: white;
@@ -398,7 +401,6 @@ const toggleFullText = (dream) => {
   cursor: pointer;
 }
 
-/* Styles for larger screens */
 @media (min-width: 768px) {
   .d-flex {
     align-items: center;
@@ -413,7 +415,6 @@ const toggleFullText = (dream) => {
   }
 }
 
-/* Styles for mobile devices */
 @media (max-width: 767px) {
   .container {
     margin-top: 100px;

@@ -1800,17 +1800,21 @@ app.put("/api/users/settings/:id", (req, res) => {
   console.log("Settings endpoint hit");
 
   const { id } = req.params;
-  const { name, surname, username } = req.body;
+  const { name, surname, username, gender, date_of_birth } = req.body;
 
   const sql =
-    "UPDATE users SET name = ?, surname = ?,username = ? WHERE id = ?";
-  pool.query(sql, [name, surname, username, id], (err, result) => {
-    if (err) {
-      res.status(500).json({ message: "Error updating user" });
-    } else {
-      res.status(200).json({ message: "User updated successfully" });
+    "UPDATE users SET name = ?, surname = ?,username = ?,gender =?, date_of_birth = ? WHERE id = ?";
+  pool.query(
+    sql,
+    [name, surname, username, gender, date_of_birth, id],
+    (err, result) => {
+      if (err) {
+        res.status(500).json({ message: "Error updating user" });
+      } else {
+        res.status(200).json({ message: "User updated successfully" });
+      }
     }
-  });
+  );
 });
 
 app.delete("/api/userDelete/:id", (req, res) => {
@@ -2364,6 +2368,62 @@ app.get("api/users/:id/lucid-dreams", (req, res) => {
       res.status(500).json({ message: "Error fetching lucid dreams" });
     } else {
       res.json(result);
+    }
+  });
+});
+
+app.put("/api/shared-dreams/comments/:commentid", (req, res) => {
+  const { commentid } = req.params;
+  const { text } = req.body;
+  console.log("Update comment endpoint hit");
+  const sql = "UPDATE comments SET Contents = ? WHERE Id = ?";
+  pool.query(sql, [text, commentid], (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error updating comment" });
+    } else {
+      res.status(200).json({ message: "Comment updated successfully" });
+      console.log("Comment updated successfully");
+    }
+  });
+});
+
+app.delete("/api/shared-dreams/comments/:commentId/:userId", (req, res) => {
+  const { commentId, userId } = req.params;
+
+  const sql = "DELETE FROM comments WHERE Id = ? AND UserId = ?";
+  pool.query(sql, [commentId, userId], (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error deleting comment" });
+    } else {
+      res.status(200).json({ message: "Comment deleted successfully" });
+    }
+  });
+});
+
+app.put("/api/shared-dreams/replies/:replyid", (req, res) => {
+  const { replyid } = req.params;
+  const { text } = req.body;
+  console.log("Update reply endpoint hit");
+  const sql = "UPDATE replies SET Contents = ? WHERE Id = ?";
+  pool.query(sql, [text, replyid], (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error updating reply" });
+    } else {
+      res.status(200).json({ message: "Reply updated successfully" });
+      console.log("Reply updated successfully");
+    }
+  });
+});
+
+app.delete("/api/shared-dreams/replies/:replyid/:userid", (req, res) => {
+  const { replyid, userid } = req.params;
+
+  const sql = "DELETE FROM replies WHERE Id = ? AND User_Id = ?";
+  pool.query(sql, [replyid, userid], (err, result) => {
+    if (err) {
+      res.status(500).json({ message: "Error deleting reply" });
+    } else {
+      res.status(200).json({ message: "Reply deleted successfully" });
     }
   });
 });

@@ -1,6 +1,13 @@
 <template>
   <div v-if="showComments">
     <div class="comment-box">
+      <img
+        v-if="avatar.valueOf() !== ''"
+        :src="'/backend' + avatar.valueOf()"
+        alt=""
+        class="rounded-circle me-3"
+        style="width: 50px; height: 50px"
+      />
       <input
         v-model="newComment"
         type="text"
@@ -10,7 +17,7 @@
       <button @click="submitComment" class="comment-button">Comment</button>
     </div>
     <div>
-      <div v-for="comment in comments" :key="comment.ID">
+      <div v-for="comment in localComments" :key="comment.ID">
         <div class="d-flex align-items-start">
           <img
             :src="'/backend' + comment.avatar_url"
@@ -22,15 +29,28 @@
             <p class="text-white mb-0">{{ comment.username }}</p>
             <div class="d-flex justify-content-between align-items-center">
               <p class="text-white mb-0">{{ comment.Contents }}</p>
-              <font-awesome-icon
-                :icon="['fas', 'ellipsis-vertical']"
-                class="ms-auto"
-              />
+              <div v-if="isAuthor(comment) && !comment.showSettings">
+                <button class="btn text-white" @click="toggleMenu(comment)">
+                  <font-awesome-icon
+                    :icon="['fas', 'ellipsis-vertical']"
+                    class="ms-auto"
+                  />
+                </button>
+              </div>
+            </div>
+            <div v-if="comment.showMenu" class="comment-menu">
+              <button @click="editComment(comment)">Edit</button>
+              <button @click="deleteComment(comment.ID)">Delete</button>
+            </div>
+            <div v-if="comment.editing" class="edit-comment">
+              <input v-model="comment.Contents" />
+              <button @click="saveComment(comment)">Save</button>
+              <button @click="cancelEdit(comment)">Cancel</button>
             </div>
             <div class="d-flex justify-content-between align-items-center">
               <p class="text-white mb-0">{{ comment.formatted_date }}</p>
             </div>
-            <div class="d-flex align-items-center ml-3">
+            <div class="d-flex align-items-center">
               <button class="btn me-2" @click="increaseLikes(comment)">
                 <font-awesome-icon
                   :icon="['fas', 'thumbs-up']"
@@ -74,7 +94,7 @@
 
 <script setup>
 import Replies from "./Replies.vue";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 
@@ -87,10 +107,10 @@ const props = defineProps({
 const emit = defineEmits(["comment-added"]);
 
 const newComment = ref("");
+const localComments = ref([...props.comments]);
 const token = localStorage.getItem("token");
 const decodedToken = jwtDecode(token);
 const userId = decodedToken.userId;
-
 const fetchLikeStatus = async (comment) => {
   try {
     const response = await axios.get(
@@ -101,49 +121,49 @@ const fetchLikeStatus = async (comment) => {
     console.error("Error fetching like status:", error);
   }
 };
-const avatar = ref(null);
-const fetchavatar = async () => {
+
+const avatar = ref("");
+const fetchAvatar = async () => {
   try {
     const response = await axios.get(
       `http://localhost:8081/api/users/${userId}/avatar`
     );
-    avatar.value = response.data.avatar;
+    avatar.value = response.data.avatar_url || "";
   } catch (error) {
     console.error("Error fetching avatar:", error);
   }
 };
 
 const fetchReplies = async (comment) => {
-  console.log("Fetching replies for comment:", comment);
-  console.log("comment.ID:", comment.ID);
-
   try {
     const response = await axios.get(
       `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/replies`
     );
     comment.replies = response.data || [];
   } catch (error) {
-    console.error("Error fetching replies:", error);
     comment.replies = [];
+    if (error.response && error.response.status !== 404) {
+      console.error("Error fetching replies:", error);
+    }
   }
 };
 
 const fetchCommentsWithLikeStatus = async () => {
-  for (let comment of props.comments) {
-    comment.replies = []; // Initialize replies as an empty array
+  for (let comment of localComments.value) {
+    comment.replies = [];
+    comment.showSettings = false;
     await fetchLikeStatus(comment);
-    await fetchReplies(comment); // Fetch replies for each comment
+    await fetchReplies(comment);
   }
 };
 
 onMounted(() => {
   fetchCommentsWithLikeStatus();
+  fetchAvatar();
 });
 
 const submitComment = async () => {
-  console.log("submitComment called with newComment:", newComment.value);
-
-  if (!newComment.value.trim()) return; // Prevent empty comments
+  if (!newComment.value.trim()) return;
 
   try {
     const response = await axios.post(
@@ -159,15 +179,11 @@ const submitComment = async () => {
       }
     );
 
-    console.log("API response:", response);
-
-    if (!response.data.commentId) {
-      console.error("API response did not contain commentId");
-      return;
-    }
+    if (!response.data.commentId) return;
 
     const newCommentObject = {
-      author: decodedToken.username,
+      avatar_url: avatar.value,
+      username: decodedToken.username,
       Contents: newComment.value,
       Likes: 0,
       likeStatus: "neutral",
@@ -177,11 +193,8 @@ const submitComment = async () => {
       replies: [],
     };
 
-    console.log("Emitting comment-added event with:", newCommentObject);
-    // Emit the new comment to the parent component
+    localComments.value.push(newCommentObject);
     emit("comment-added", newCommentObject);
-
-    // Clear the input field
     newComment.value = "";
   } catch (error) {
     console.error("Error:", error);
@@ -189,92 +202,184 @@ const submitComment = async () => {
 };
 
 const increaseLikes = async (comment) => {
-  console.log("increaseLikes called with comment:", comment);
   try {
     if (comment.likeStatus === "liked") {
-      console.log("Comment is already liked. Unliking...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/${userId}/unlike`
       );
       comment.Likes--;
       comment.likeStatus = "neutral";
     } else if (comment.likeStatus === "disliked") {
-      console.log("Comment was disliked. Liking from dislike...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/${userId}/likeFromDislike`
       );
       comment.Likes += 2;
       comment.likeStatus = "liked";
     } else {
-      console.log("Comment is not liked. Liking...");
-      console.log("comment.ID:", comment.ID);
-
       await axios.post(
         `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/${userId}/like`
       );
       comment.Likes++;
       comment.likeStatus = "liked";
     }
-    console.log("Final comment state:", comment);
   } catch (error) {
     console.error("Error checking likes:", error);
   }
 };
 
 const decreaseLikes = async (comment) => {
-  console.log("decreaseLikes called with comment:", comment);
   try {
     if (comment.likeStatus === "disliked") {
-      console.log("Comment is already disliked. Undisliking...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/${userId}/undislike`
       );
       comment.Likes++;
       comment.likeStatus = "neutral";
     } else if (comment.likeStatus === "liked") {
-      console.log("Comment was liked. Disliking from like...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/${userId}/dislikeFromLike`
       );
       comment.Likes -= 2;
       comment.likeStatus = "disliked";
     } else {
-      console.log("Comment is not disliked. Disliking...");
       await axios.post(
         `http://localhost:8081/api/shared-dreams/comments/${comment.ID}/${userId}/dislike`
       );
       comment.Likes--;
       comment.likeStatus = "disliked";
     }
-    console.log("Final comment state:", comment);
   } catch (error) {
     console.error("Error checking dislikes:", error);
   }
 };
 
 const toggleReplies = async (comment) => {
-  console.log(
-    "Toggling replies for comment ID:",
-    comment.ID,
-    "Current showReplies:",
-    comment.showReplies
-  );
   if (!comment.showReplies) {
-    await fetchReplies(comment); // Fetch replies if not already fetched
+    await fetchReplies(comment);
   }
   comment.showReplies = !comment.showReplies;
-  console.log("New showReplies state:", comment.showReplies);
 };
 
 const addReplyToComment = (commentId, newReply) => {
-  const comment = props.comments.find((comment) => comment.ID === commentId);
+  const comment = localComments.value.find(
+    (comment) => comment.ID === commentId
+  );
   if (comment) {
     comment.replies.push(newReply);
   }
 };
+
+const toggleMenu = (comment) => {
+  comment.showMenu = !comment.showMenu;
+};
+
+const editComment = (comment) => {
+  comment.editing = true;
+  comment.showSettings = !comment.showSettings;
+  comment.showMenu = false;
+};
+
+const deleteComment = async (commentId) => {
+  const originalComments = [...localComments.value];
+  localComments.value = localComments.value.filter(
+    (comment) => comment.ID !== commentId
+  );
+
+  try {
+    await axios.delete(
+      `http://localhost:8081/api/shared-dreams/comments/${commentId}/${userId}`
+    );
+    console.log("Comment deleted successfully");
+  } catch (error) {
+    localComments.value = originalComments;
+    console.error("Error deleting comment:", error);
+  }
+};
+
+const saveComment = async (comment) => {
+  console.log("The comment is:", comment);
+  comment.editing = false;
+  comment.showSettings = !comment.showSettings;
+
+  try {
+    const response = await axios.put(
+      `http://localhost:8081/api/shared-dreams/comments/${comment.ID}`,
+      {
+        text: comment.Contents,
+      }
+    );
+    console.log("The response status is:", response);
+
+    comment.editing = false;
+    comment.showSettings = !comment.showSettings;
+  } catch (error) {
+    console.error("Error saving comment:", error);
+  }
+};
+
+const cancelEdit = (comment) => {
+  comment.editing = false;
+  comment.showSettings = !comment.showSettings;
+};
+
+const isAuthor = (comment) => {
+  return comment.UserID === userId;
+};
 </script>
 
 <style scoped>
+.comment-menu {
+  position: absolute;
+  background-color: #333;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  margin-left: 150px;
+}
+
+.comment-menu button {
+  display: block;
+  background: none;
+  border: none;
+  color: white;
+  padding: 10px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+
+.comment-menu button:hover {
+  background-color: #444;
+}
+
+.edit-comment {
+  display: flex;
+  align-items: center;
+}
+
+.edit-comment input {
+  flex-grow: 1;
+  padding: 10px;
+  margin-right: 10px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+}
+
+.edit-comment button {
+  background-color: #00ccff;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.edit-comment button:hover {
+  background-color: #00ccff;
+}
+.replies-section {
+  margin-left: 50px;
+}
 .comment-box {
   display: flex;
   align-items: center;
@@ -296,16 +401,16 @@ const addReplyToComment = (commentId, newReply) => {
 }
 
 .comment-button {
-  background-color: #4caf50;
+  background-color: #00ccff;
   color: white;
   border: none;
   border-radius: 20px;
   padding: 10px 20px;
-  margin-left: 10px;
+  margin-left: 5px;
   cursor: pointer;
 }
 
 .comment-button:hover {
-  background-color: #45a049;
+  background-color: #00ccff;
 }
 </style>

@@ -325,4 +325,7 @@ onMounted(async () => {
 .statistics {
   min-width: 200px;
 }
+.form-control::placeholder {
+  color: #ccc;
+}
 </style>

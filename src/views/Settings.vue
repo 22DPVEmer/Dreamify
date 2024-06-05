@@ -4,7 +4,6 @@
     class="root container bg-dark text-white p-4 text-center"
   >
     <div class="row">
-      <!-- Avatar Section -->
       <div
         class="col-md-4 d-flex justify-content-center align-items-center flex-column h1"
       >
@@ -25,14 +24,21 @@
         </div>
         <div>Username</div>
         <div class="h3 mt-4">{{ user.username }}</div>
+        <div class="h3 mt-4">{{ formattedDate(user.created_at) }}</div>
       </div>
 
-      <!-- Settings Section -->
       <div class="col-md-8">
         <h1 class="text-white mb-4">Settings</h1>
-        <!-- Username Input -->
 
-        <!-- Name Input -->
+        <div class="mb-3">
+          <h2 class="text-white">Username</h2>
+          <input
+            type="text"
+            class="form-control bg-dark text-white"
+            v-model="user.username"
+          />
+        </div>
+
         <div class="mb-3">
           <h2 class="text-white">Name</h2>
           <input
@@ -41,7 +47,7 @@
             v-model="user.name"
           />
         </div>
-        <!-- Surname Input -->
+
         <div class="mb-3">
           <h2 class="text-white">Surname</h2>
           <input
@@ -50,76 +56,68 @@
             v-model="user.surname"
           />
         </div>
-        <!-- Change Password Section -->
-        <div>
-          <h2 class="text-white">Change Password</h2>
-          <div class="mb-3">
-            <label for="currentPassword" class="text-white"
-              >Current Password</label
+
+        <div class="mb-3">
+          <h2 class="text-white">Gender</h2>
+          <select class="form-select bg-dark text-white" v-model="user.gender">
+            <option value="FEMALE">FEMALE</option>
+            <option value="MALE">MALE</option>
+            <option value="OTHER">OTHER</option>
+            <option value="NOT DECLARED">NOT DECLARED</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <h2 class="text-white">Date of Birth</h2>
+          <div class="d-flex gap-2">
+            <select
+              class="form-select bg-dark text-white"
+              v-model="user.year"
+              required
             >
-            <div class="input-group">
-              <input
-                type="password"
-                id="currentPassword"
-                class="form-control bg-dark text-white"
-                v-model="user.password"
-              />
-              <button
-                class="btn btn-outline-secondary"
-                @click="toggleShowPassword('currentPassword')"
-              >
-                Show
-              </button>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="newPassword" class="text-white">New Password</label>
-            <div class="input-group">
-              <input
-                type="password"
-                id="newPassword"
-                class="form-control bg-dark text-white"
-                v-model="user.newPassword"
-              />
-              <button
-                class="btn btn-outline-secondary"
-                @click="toggleShowPassword('newPassword')"
-              >
-                Show
-              </button>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="confirmPassword" class="text-white"
-              >Confirm Password</label
+              <option disabled value="">YEAR</option>
+              <option v-for="year in years" :key="year" :value="year">
+                {{ year }}
+              </option>
+            </select>
+            <select
+              class="form-select bg-dark text-white"
+              v-model="user.month"
+              required
             >
-            <div class="input-group">
-              <input
-                type="password"
-                id="confirmPassword"
-                class="form-control bg-dark text-white"
-                v-model="user.confirmPassword"
-              />
-              <button
-                class="btn btn-outline-secondary"
-                @click="toggleShowPassword('confirmPassword')"
+              <option disabled value="">MONTH</option>
+              <option
+                v-for="(month, index) in months"
+                :key="index"
+                :value="index + 1"
               >
-                Show
-              </button>
-            </div>
+                {{ month }}
+              </option>
+            </select>
+            <select
+              class="form-select bg-dark text-white"
+              v-model="user.day"
+              required
+            >
+              <option disabled value="">DAY</option>
+              <option v-for="day in days" :key="day" :value="day">
+                {{ day }}
+              </option>
+            </select>
           </div>
-          <div class="d-flex justify-content-between">
-            <button class="btn btn-primary btn-lg mt-3" @click="output">
-              Submit
-            </button>
-            <button class="btn btn-danger btn-lg mt-3" @click="deletion">
-              Delete profile
-            </button>
-          </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <button class="btn neon-btn btn-lg mt-3" @click="output">
+            Submit
+          </button>
+          <button class="btn neon-btn btn-danger btn-lg mt-3" @click="deletion">
+            Delete profile
+          </button>
         </div>
       </div>
     </div>
-    <!-- Cropping Dialog -->
+
     <div v-if="showCropper" class="cropper-dialog">
       <div class="cropper-container">
         <vue-cropper
@@ -158,13 +156,33 @@ const showCropper = ref(false);
 const croppingImage = ref(null);
 const cropperRef = ref(null);
 
+const years = Array.from(
+  { length: 100 },
+  (v, i) => new Date().getFullYear() - i
+);
+const months = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+const days = Array.from({ length: 31 }, (v, i) => i + 1);
+
 const resetCropperState = () => {
   croppingImage.value = null;
   showCropper.value = false;
 };
 
 const selectImage = () => {
-  fileInput.value.value = null; // Reset the file input so it can be used again
+  fileInput.value.value = null;
   fileInput.value.click();
 };
 
@@ -195,7 +213,7 @@ const saveCroppedImage = async () => {
       });
 
       if (response.data.success) {
-        avatarUrl.value = `http://localhost:8081${response.data.avatarPath}`; // Update the avatar URL
+        avatarUrl.value = `http://localhost:8081${response.data.avatarPath}`;
         console.log("Avatar updated successfully:", response.data.avatarPath);
       } else {
         console.error("Failed to update avatar:", response.data.message);
@@ -240,18 +258,27 @@ const output = async () => {
   const token = localStorage.getItem("token");
 
   try {
+    const formattedDateOfBirth = formattedDate(
+      user.value.year,
+      user.value.month,
+      user.value.day
+    );
+
     const response = await axios.put(
       `http://localhost:8081/api/users/settings/${user.value.id}`,
       {
         username: user.value.username,
         name: user.value.name,
         surname: user.value.surname,
-        avatar: avatarUrl.value, // Make sure to update the avatar URL in the user profile
+        gender: user.value.gender,
+        date_of_birth: formattedDateOfBirth,
+        avatar: avatarUrl.value,
       },
       {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
+
     if (response.status === 200) {
       alert("User data updated successfully.");
     }
@@ -264,13 +291,12 @@ const output = async () => {
   }
 };
 
-const toggleShowPassword = (fieldId) => {
-  const input = document.getElementById(fieldId);
-  if (input.type === "password") {
-    input.type = "text";
-  } else {
-    input.type = "password";
-  }
+const formattedDate = (year, month, day) => {
+  if (!year || !month || !day) return "";
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+    2,
+    "0"
+  )}`;
 };
 
 onMounted(async () => {
@@ -285,19 +311,17 @@ onMounted(async () => {
         headers: { Authorization: `Bearer ${token}` },
       }
     );
+    console.log("response data is:", response.data);
 
     if (response.data) {
+      const [year, month, day] = response.data.date_of_birth.split("-");
       user.value = {
-        password: "",
-        newPassword: "",
-        confirmPassword: "",
         ...response.data,
+        year: parseInt(year),
+        month: parseInt(month),
+        day: parseInt(day),
       };
-      console.log("User response data fetched:", response.data);
       avatarUrl.value = `http://localhost:8081${response.data.avatar_url}`;
-      console.log("User data fetched:", user.value);
-    } else {
-      console.log("User data is null");
     }
   } catch (error) {
     console.error("Error fetching user data:", error);
@@ -319,7 +343,6 @@ onMounted(async () => {
   width: 300px;
   height: 300px;
   position: relative;
-  background-color: #6c757d;
 }
 
 .avatar-container img {
@@ -355,12 +378,60 @@ onMounted(async () => {
   gap: 10px;
 }
 
-.input-group {
-  display: flex;
-  align-items: center;
+textarea.form-control,
+input.form-control {
+  color: #ffffff;
+  background-color: #1e1e1e;
+  border: 1px solid #00ccff;
 }
 
-.input-group button {
-  margin-left: 5px;
+textarea.form-control:focus,
+input.form-control:focus {
+  box-shadow: 0 0 10px #00ccff;
+  border-color: #00ccff;
+}
+
+.text-muted {
+  color: #6c757d !important;
+}
+
+.container {
+  margin-top: 50px;
+  color: white;
+}
+
+.separator {
+  border-top: 1px solid #00ccff;
+  margin: 20px 0;
+}
+
+.lucid-box,
+.regular-box {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+.lucid-box {
+  background-color: #00ccff;
+  color: #000;
+}
+
+.regular-box {
+  background-color: #888;
+  color: #fff;
+}
+
+.neon-btn {
+  border: 2px solid #00ccff;
+  color: #00ccff;
+  background: none;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.neon-btn:hover {
+  background-color: #00ccff;
+  color: #000;
 }
 </style>
