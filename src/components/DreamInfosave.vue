@@ -28,6 +28,7 @@
               <label for="dreamTitle" class="form-label text-white h4"
                 >Title</label
               >
+
               <input
                 type="text"
                 class="form-control input-background text-white h1"
@@ -189,7 +190,7 @@ import { ref, computed, watch } from "vue";
 import { formatISO } from "date-fns";
 import store from "../store/store.js";
 
-const dreamId = store.state.selectedDreamId; // shis fakin works
+const dreamId = store.state.selectedDreamId;
 const emit = defineEmits(["dream-updated"]);
 
 const dreamDate = ref(formatISO(new Date(), { representation: "date" }));
@@ -251,13 +252,13 @@ function addTag(event) {
 
 function updateCharacterCount() {
   if (totalCharacterCount.value > tagLimit.value) {
-    currentTag.value = currentTag.value.substring(0, tagLimit.value); // Enforce character limit in input
+    currentTag.value = currentTag.value.substring(0, tagLimit.value);
   }
 }
 
 function handleBackspace(event) {
   if (event.key === "Backspace" && currentTag.value.length > 0) {
-    currentTag.value = currentTag.value.slice(0, -1); // Remove the last character
+    currentTag.value = currentTag.value.slice(0, -1);
   }
 }
 
@@ -268,13 +269,12 @@ function removeTag(index) {
 async function submitForm() {
   if (!checkFormValidity()) return;
 
-  // Push the current tag into tags array if it's not empty
   if (currentTag.value.trim() !== "") {
     tags.value.push(currentTag.value.trim());
     currentTag.value = "";
   }
 
-  console.log("Tags:", tags.value); // Log the tags array
+  console.log("Tags:", tags.value);
 
   const dreamEntry = {
     dreamId: dreamId,
@@ -295,16 +295,16 @@ async function submitForm() {
       "Content-Type": "application/json",
       Authorization: `Bearer ${localStorage.getItem("token")}`,
     },
+
     body: JSON.stringify(dreamEntry),
   });
 
   try {
     if (response.ok) {
       alert("Dream entry successful!");
-      // Emit an event with the updated dream data
+
       emit("dream-updated", dreamEntry);
 
-      // Close the modal
       const modal = new bootstrap.Modal(
         document.getElementById("dreamEntryModal")
       );
@@ -350,7 +350,6 @@ async function fetchDreamData() {
 }
 fetchDreamData();
 
-// For the tags button
 const isInputVisible = ref(false);
 const inputRef = ref(null);
 

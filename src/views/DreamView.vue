@@ -4,14 +4,7 @@
       <div class="card mb-3 bg-dark text-white">
         <div class="card-body">
           <h1 class="card-title text-center">
-            <span v-if="editing">
-              <input
-                type="text"
-                v-model="editedTitle"
-                class="form-control bg-dark text-white"
-              />
-            </span>
-            <span v-else>{{ dream.title }}</span>
+            <span>{{ dream.title }}</span>
           </h1>
           <div class="text-center mb-3">
             <button
@@ -50,13 +43,7 @@
           </p>
           <div class="separator"></div>
           <p class="card-text mt-3">
-            <span v-if="editing">
-              <textarea
-                v-model="editedDescription"
-                class="form-control bg-dark text-white"
-              ></textarea>
-            </span>
-            <span v-else>{{ dream.description }}</span>
+            <span>{{ dream.description }}</span>
           </p>
           <div class="separator"></div>
           <p class="card-text mt-3">

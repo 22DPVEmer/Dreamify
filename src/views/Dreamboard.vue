@@ -1,94 +1,100 @@
 <template>
   <div class="container">
-    <div class="d-flex flex-column align-items-center">
-      <div class="d-flex justify-content-between align-items-center w-100">
-        <input
-          type="text"
-          class="form-control me-2 text-white bg-dark border-info"
-          placeholder="Search by title or tag..."
-          v-model="searchQuery"
-          style="width: 300px"
-        />
-
-        <h1
-          class="my-4 me-2 text-white"
-          :class="{
-            'text-decoration-underline text-primary': selected === 'New',
-          }"
-          @click="selected = 'New'"
-        >
-          New
-        </h1>
-        <h1
-          class="my-4 me-2 text-white"
-          :class="{
-            'text-decoration-underline text-primary': selected === 'Hot',
-          }"
-          @click="selected = 'Hot'"
-        >
-          Hot
-        </h1>
-        <h1
-          class="my-4 me-2 text-white"
-          :class="{
-            'text-decoration-underline text-primary': selected === 'Top',
-          }"
-          @click="selected = 'Top'"
-        >
-          Top
-        </h1>
-      </div>
-      <div class="filter-controls mb-4 w-100">
-        <div class="text-center mb-2">
-          <h5 class="text-white">Lucidity</h5>
-          <div class="d-flex justify-content-center">
-            <div class="form-check form-check-inline text-white">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="lucidCheckbox"
-                v-model="lucidFilter"
-              />
-              <label class="form-check-label" for="lucidCheckbox">Lucid</label>
-            </div>
-            <div class="form-check form-check-inline text-white">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="nonLucidCheckbox"
-                v-model="nonLucidFilter"
-              />
-              <label class="form-check-label" for="nonLucidCheckbox"
-                >Non-Lucid</label
-              >
-            </div>
-          </div>
-        </div>
-        <div class="text-center mb-2">
-          <h5 class="text-white">Categories</h5>
-          <div class="d-flex justify-content-center flex-wrap">
-            <div
-              class="form-check form-check-inline text-white"
-              v-for="category in categories"
-              :key="category.id"
-            >
-              <input
-                class="form-check-input"
-                type="checkbox"
-                :id="'category-' + category.id"
-                :value="category.id"
-                v-model="categoryFilter"
-              />
-              <label
-                class="form-check-label"
-                :for="'category-' + category.id"
-                >{{ category.name }}</label
-              >
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="header">
+      <div class="text-white h2">Search bar</div>
+      <input
+        type="text"
+        class="form-control me-2 text-white bg-dark border-info"
+        placeholder="Search by title or tag..."
+        v-model="searchQuery"
+        style="width: 300px"
+      />
     </div>
+    <div class="separator"></div>
+
+    <div class="d-flex justify-content-between align-items-center w-100">
+      <h1
+        class="my-4 me-2 text-white"
+        :class="{
+          'text-decoration-underline text-primary': selected === 'New',
+        }"
+        @click="selected = 'New'"
+      >
+        New
+      </h1>
+      <h1
+        class="my-4 me-2 text-white"
+        :class="{
+          'text-decoration-underline text-primary': selected === 'Hot',
+        }"
+        @click="selected = 'Hot'"
+      >
+        Hot
+      </h1>
+      <h1
+        class="my-4 me-2 text-white"
+        :class="{
+          'text-decoration-underline text-primary': selected === 'Top',
+        }"
+        @click="selected = 'Top'"
+      >
+        Top
+      </h1>
+    </div>
+    <div class="separator"></div>
+
+    <div class="filter-controls mb-4 w-100">
+      <div class="text-center mb-2">
+        <h5 class="text-white">Lucidity</h5>
+        <div class="d-flex justify-content-center">
+          <div class="form-check form-check-inline text-white">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="lucidCheckbox"
+              v-model="lucidFilter"
+            />
+            <label class="form-check-label" for="lucidCheckbox">Lucid</label>
+          </div>
+          <div class="form-check form-check-inline text-white">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="nonLucidCheckbox"
+              v-model="nonLucidFilter"
+            />
+            <label class="form-check-label" for="nonLucidCheckbox"
+              >Non-Lucid</label
+            >
+          </div>
+        </div>
+      </div>
+      <div class="separator"></div>
+
+      <div class="text-center mb-2">
+        <h5 class="text-white">Categories</h5>
+        <div class="d-flex justify-content-center flex-wrap">
+          <div
+            class="form-check form-check-inline text-white"
+            v-for="category in categories"
+            :key="category.id"
+          >
+            <input
+              class="form-check-input"
+              type="checkbox"
+              :id="'category-' + category.id"
+              :value="category.id"
+              v-model="categoryFilter"
+            />
+            <label class="form-check-label" :for="'category-' + category.id">{{
+              category.name
+            }}</label>
+          </div>
+        </div>
+      </div>
+      <div class="separator"></div>
+    </div>
+
     <div v-if="loading">Loading...</div>
     <div
       v-else
@@ -399,6 +405,11 @@ const toggleFullText = (dream) => {
 .see-more {
   color: #00ccff;
   cursor: pointer;
+}
+
+.separator {
+  border-top: 2px solid #00ccff;
+  margin: 20px 0;
 }
 
 @media (min-width: 768px) {

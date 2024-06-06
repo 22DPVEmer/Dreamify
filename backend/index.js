@@ -783,6 +783,7 @@ app.post("/user", async (req, res) => {
 
 // Dream entry saval code
 app.post("/user/save", async (req, res) => {
+  console.log("Save dream endpoint hit");
   console.log(req.body);
   const { dreamId, date, title, description, lucid, tags, category } = req.body;
 
@@ -794,7 +795,6 @@ app.post("/user/save", async (req, res) => {
     "INSERT INTO tags (user_id, dream_id, tag_name) VALUES (?, ?, ?)";
 
   try {
-    // Get user ID from token
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       console.error("Authorization header missing");
@@ -806,13 +806,11 @@ app.post("/user/save", async (req, res) => {
     const userId = decodedToken.userId;
     console.log("User ID extracted from token:", userId);
 
-    // Ensure tags is an array
     if (!Array.isArray(tags)) {
       console.error("Tags should be an array");
       return res.status(400).send("Tags should be an array");
     }
 
-    // Update dream entry
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();

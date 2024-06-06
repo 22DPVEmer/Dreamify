@@ -14,7 +14,6 @@
       </div>
     </div>
     <div v-if="showResults" class="search-results">
-      <!-- Your search results here -->
       <button @click="showResults = false" class="btn btn-secondary">
         Back
       </button>
@@ -34,8 +33,6 @@ const toggleSearchBar = () => {
 };
 
 const performSearch = () => {
-  // Implement your search functionality here
-  // For demonstration, let's just show the results
   showResults.value = true;
 };
 </script>

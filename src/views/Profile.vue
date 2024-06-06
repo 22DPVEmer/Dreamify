@@ -9,6 +9,7 @@
     <div v-else>
       <div v-if="dreams.length" class="mt-3">
         <div class="text-center mb-4">
+          <h4 class="text-white h2">Search</h4>
           <input
             type="text"
             class="form-control mx-auto text-white bg-dark border-info"
@@ -17,6 +18,7 @@
             style="width: 300px"
           />
         </div>
+        <div class="separator"></div>
         <div class="filter-controls mb-4">
           <div class="text-center mb-2">
             <h5 class="text-white">Lucidity</h5>
@@ -45,6 +47,7 @@
               </div>
             </div>
           </div>
+          <div class="separator"></div>
           <div class="text-center mb-2">
             <h5 class="text-white">Categories</h5>
             <div class="d-flex justify-content-center flex-wrap">
@@ -69,6 +72,7 @@
             </div>
           </div>
         </div>
+        <div class="separator"></div>
         <div class="d-flex flex-column flex-md-row">
           <div class="flex-grow-1">
             <div
@@ -309,17 +313,21 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.profile {
+.profile-section {
   background-color: #343a40;
   color: #fff;
 }
-.dream-card {
-  background-color: #2c2f33;
+
+.neon-line {
+  border: 2px solid #0ff;
+  box-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff;
 }
-.statistics {
-  min-width: 200px;
-}
+
 .form-control::placeholder {
   color: #ccc;
+}
+.separator {
+  border-top: 2px solid #00ccff;
+  margin: 20px 0;
 }
 </style>
