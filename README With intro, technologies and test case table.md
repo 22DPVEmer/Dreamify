@@ -1,13 +1,15 @@
 # Dreamify
+
 ## What is Dreamify?
-A website for sharing dreams, tracking your dreaming consistency, and sharing them with others with a modern design suitable for people of all ages.
-## Technologies used:
-1. Vue.js
-2. Node.js
-3. Express
-4. Bootstrap
-5. Javascript + libraries
-6. HTML + vanilla CSS
+A website for sharing dreams, tracking your dreaming consistency, and sharing them with others, featuring a modern design suitable for people of all ages.
+
+## Technologies Used:
+1. **.NET 8**
+2. **SignalR** (for real-time communication)
+3. **Entity Framework** (for database management)
+4. **Bootstrap**
+5. **HTML + CSS**
+
 ## What Does Dreamify Offer?
 1. **Login Page**
 2. **Signup Page**
@@ -29,43 +31,11 @@ A website for sharing dreams, tracking your dreaming consistency, and sharing th
 10. **Custom Filtering**
 11. **Calendar of Lucidity with Dream Views**
 
-
-
-
-
 ## Recommended IDE Setup
-
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vitejs.dev/config/).
+[VSCode](https://code.visualstudio.com/) + [C# Extension](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csharp)
 
 ## Project Setup
 
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-cd backend -> npm start
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-## tabula
-| Test case id | Test scenario                                                 | Expected result                                                                                  | Actual result                                                                                  | Status |
-|--------------|---------------------------------------------------------------|--------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|--------|
-| 1            | User registration with all required fields correctly filled. | User is successfully registered and redirected to the login page                                | User successfully registered and redirected to the login page                                | Passed |
-| 2            | User attempts to register without inputting any of the fields.| Under registration form, an error is displayed indicating missing fields.                        | Inside registration form, an error is displayed indicating missing fields saying it is required.                      | Passed |
-| 3            | User logs in with the correct email and password.             | User is successfully logged in, redirected to the home page, and sees new navigation tabs.       | User successfully logged in, redirected to the home page, and sees new navigation tabs.         | Passed |
-| 4            | User logs in with incorrect details.                          | Under login form, an error is displayed indicating invalid details.                               | Inside login form, an error is displayed indicating invalid details.                             | Passed |
-| 5            | User clicks the “Dream,” button in the navigation bar.       | User is directed to the dream entry submission page, and by pressing + button can add dreams which will be displayed in journal.                       | User is directed to start page "Dream" and can start their dreaming journey.                      | Passed |
-
+1. Install dependencies:
+   ```sh
+   dotnet restore
