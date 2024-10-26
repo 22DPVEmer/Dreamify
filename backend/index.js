@@ -7,7 +7,6 @@ const cors = require("cors");
 const mysql2 = require("mysql2/promise");
 const bodyParser = require("body-parser");
 const crypto = require("crypto");
-const moment = require("moment-timezone");
 
 const app = express();
 const port = 8081; // Changed port to 8081 as it's the listening port for the express server
