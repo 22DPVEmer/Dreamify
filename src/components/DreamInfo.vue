@@ -19,10 +19,14 @@
               <input
                 type="date"
                 class="form-control input-background text-white"
+                :class="{ 'is-invalid': !isDateValid }"
                 id="dreamDate"
                 v-model="dreamDate"
                 :max="maxDate"
               />
+              <div v-if="!isDateValid" class="invalid-feedback">
+                Please select a date.
+              </div>
             </div>
             <div class="mb-3 text-dark">
               <label for="dreamTitle" class="form-label text-white h4"
@@ -31,10 +35,14 @@
               <input
                 type="text"
                 class="form-control input-background text-white h1"
+                :class="{ 'is-invalid': !isTitleValid }"
                 id="dreamTitle"
                 v-model="dreamTitle"
                 maxlength="30"
               />
+              <div v-if="!isTitleValid" class="invalid-feedback">
+                Please enter a title.
+              </div>
             </div>
             <div class="mb-3 text-dark">
               <label for="dreamDescription" class="form-label text-white h4"
@@ -42,11 +50,15 @@
               >
               <textarea
                 class="form-control no-resize input-background text-white"
+                :class="{ 'is-invalid': !isDescriptionValid }"
                 id="dreamDescription"
                 placeholder="Write your dream here..."
                 rows="5"
                 v-model="dreamDescription"
               ></textarea>
+              <div v-if="!isDescriptionValid" class="invalid-feedback">
+                Please enter a description.
+              </div>
             </div>
             <div class="mb-3 text-dark">
               <label for="dd" class="form-label text-white h4 text-center w-100"
@@ -210,6 +222,9 @@ const categories = ref([
   { id: 10, name: "Celebration & Joy" },
 ]);
 
+// Set the default category to the first one in the list
+selectedCategory.value = categories.value[0];
+
 watch(selectedCategory, (newCategory) => {
   if (newCategory) {
     console.log("Selected category:", newCategory.id);
@@ -218,12 +233,12 @@ watch(selectedCategory, (newCategory) => {
   }
 });
 
+const isDateValid = computed(() => dreamDate.value.trim() !== "");
+const isTitleValid = computed(() => dreamTitle.value.trim() !== "");
+const isDescriptionValid = computed(() => dreamDescription.value.trim() !== "");
+
 const isFormValid = computed(() => {
-  return (
-    dreamDate.value.trim() !== "" &&
-    dreamTitle.value.trim() !== "" &&
-    dreamDescription.value.trim() !== ""
-  );
+  return isDateValid.value && isTitleValid.value && isDescriptionValid.value;
 });
 
 function checkFormValidity() {
@@ -308,7 +323,7 @@ async function submitForm() {
   dreamType.value = "regular";
   tags.value = [];
   currentTag.value = "";
-  selectedCategory.value = null;
+  selectedCategory.value = categories.value[0]; // Reset to the first category
 }
 
 // For the tags button
@@ -390,5 +405,12 @@ function toggleInputVisibility() {
 .btn-close-white {
   filter: invert(1);
   opacity: 1;
+}
+.is-invalid {
+  border-color: #dc3545;
+  background-color: #f8d7da;
+}
+.invalid-feedback {
+  color: #dc3545;
 }
 </style>

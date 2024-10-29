@@ -7,12 +7,46 @@ const cors = require("cors");
 const mysql2 = require("mysql2/promise");
 const bodyParser = require("body-parser");
 const crypto = require("crypto");
-
+const helmet = require("helmet");
 const app = express();
 const port = 8081; // Changed port to 8081 as it's the listening port for the express server
 
-app.use(cors());
+app.use(helmet());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "https://cdn.jsdelivr.net"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'", "http://localhost:8081"],
+      fontSrc: ["'self'", "https://cdn.jsdelivr.net"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  })
+);
+
+app.use(helmet.frameguard({ action: "deny" }));
+app.use(helmet.noSniff());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+app.use((req, res, next) => {
+  const forbiddenFiles = [".git", ".env", ".git/config"];
+  if (forbiddenFiles.some((file) => req.url.includes(file))) {
+    return res.status(403).send("Access Denied");
+  }
+  next();
+});
 
 // Set up storage for Multer
 const storage = multer.diskStorage({
