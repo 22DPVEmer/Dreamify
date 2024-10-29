@@ -70,7 +70,10 @@
                       'form-control',
                       'bg-dark',
                       'text-white',
-                      { 'is-invalid': validationErrors.email },
+                      {
+                        'is-invalid':
+                          validationErrors.email || serverErrors.email,
+                      },
                     ]"
                     name="email"
                     id="email"
@@ -78,8 +81,11 @@
                     v-model="formData.email"
                     required
                   />
-                  <div class="text-danger" v-if="validationErrors.email">
-                    {{ validationErrors.email }}
+                  <div
+                    class="text-danger"
+                    v-if="validationErrors.email || serverErrors.email"
+                  >
+                    {{ validationErrors.email || serverErrors.email }}
                   </div>
                 </div>
                 <div class="col-12">
@@ -147,7 +153,10 @@
                       'form-control',
                       'bg-dark',
                       'text-white',
-                      { 'is-invalid': validationErrors.username },
+                      {
+                        'is-invalid':
+                          validationErrors.username || serverErrors.username,
+                      },
                     ]"
                     name="username"
                     id="username"
@@ -155,8 +164,11 @@
                     v-model="formData.username"
                     required
                   />
-                  <div class="text-danger" v-if="validationErrors.username">
-                    {{ validationErrors.username }}
+                  <div
+                    class="text-danger"
+                    v-if="validationErrors.username || serverErrors.username"
+                  >
+                    {{ validationErrors.username || serverErrors.username }}
                   </div>
                 </div>
                 <div class="col-12">
@@ -237,6 +249,7 @@ export default {
         day: "",
       },
       validationErrors: {},
+      serverErrors: {},
       years: Array.from(
         { length: 100 },
         (v, i) => new Date().getFullYear() - i
@@ -288,6 +301,7 @@ export default {
     },
     async submitForm() {
       this.validationErrors = this.validateInput();
+      this.serverErrors = {};
 
       if (Object.keys(this.validationErrors).length === 0) {
         const date_of_birth = this.formatDate(
@@ -326,7 +340,15 @@ export default {
           }
         } catch (error) {
           console.error("Error:", error);
-          alert("Signup failed due to an error!");
+          if (error.response && error.response.status === 409) {
+            if (error.response.data.message.includes("Email")) {
+              this.serverErrors.email = error.response.data.message;
+            } else if (error.response.data.message.includes("Username")) {
+              this.serverErrors.username = error.response.data.message;
+            }
+          } else {
+            alert("Signup failed due to an error!");
+          }
         }
       }
     },

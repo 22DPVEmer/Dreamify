@@ -12,6 +12,30 @@ const app = express();
 const port = 8081; // Changed port to 8081 as it's the listening port for the express server
 
 app.use(helmet());
+
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'none'"], // Explicitly set to none and define needed sources in specific directives
+      scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "https://cdn.jsdelivr.net"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'", "http://localhost:8081"],
+      fontSrc: ["'self'", "https://cdn.jsdelivr.net"],
+      objectSrc: ["'none'"],
+      formAction: ["'self'"], // Explicitly restrict form submissions
+      frameAncestors: ["'none'"], // Explicitly prevent framing
+      baseUri: ["'self'"], // Restrict base URI
+      manifestSrc: ["'self'"],
+      mediaSrc: ["'none'"],
+      workerSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  })
+);
+app.use(helmet.frameguard({ action: "deny" }));
+app.use(helmet.noSniff());
+
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -20,26 +44,11 @@ app.use(
   })
 );
 
-app.use(
-  helmet.contentSecurityPolicy({
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
-      styleSrc: ["'self'", "https://cdn.jsdelivr.net"],
-      imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'", "http://localhost:8081"],
-      fontSrc: ["'self'", "https://cdn.jsdelivr.net"],
-      objectSrc: ["'none'"],
-      upgradeInsecureRequests: [],
-    },
-  })
-);
-
-app.use(helmet.frameguard({ action: "deny" }));
-app.use(helmet.noSniff());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
-
+app.get("/", (req, res) => {
+  res.send("Welcome to the Dreamify backend!");
+});
 app.use((req, res, next) => {
   const forbiddenFiles = [".git", ".env", ".git/config"];
   if (forbiddenFiles.some((file) => req.url.includes(file))) {
@@ -220,7 +229,7 @@ async function initializeDatabase(pool) {
 
     // Start the server
     app.listen(port, () => {
-      console.log(`Server is running at port ${port}`);
+      console.log(`Server is running at http://localhost:${port}`);
     });
   } catch (error) {
     console.error("Error setting up the server:", error);
@@ -584,6 +593,13 @@ app.post("/api/signup", async (req, res) => {
       .status(200)
       .json({ message: "Signup successful", user: user, token: token });
   } catch (error) {
+    if (error.code === "ER_DUP_ENTRY") {
+      if (error.sqlMessage.includes("email")) {
+        return res.status(409).json({ message: "Email is already taken." });
+      } else if (error.sqlMessage.includes("username")) {
+        return res.status(409).json({ message: "Username is already taken." });
+      }
+    }
     console.error("Error executing query", error.stack);
     res.status(500).json({ error: "Internal server error" });
   }
