@@ -1,5 +1,5 @@
 import { createStore } from "vuex";
-import { jwtDecode } from "jwt-decode"; // Fix the import
+import jwtDecode from "jwt-decode"; // Fix the import
 
 // Function to get the initial state
 const getInitialState = () => {
@@ -10,15 +10,23 @@ const getInitialState = () => {
   if (token) {
     try {
       const decodedToken = jwtDecode(token); // decode without verification
-      userId = decodedToken.userId;
-      console.log("userId", userId);
-      if (userId) {
-        isLoggedIn = true;
+      const currentTime = Date.now() / 1000; // current time in seconds
+      if (decodedToken.exp < currentTime) {
+        // Token is expired
+        localStorage.removeItem("token");
+        console.error("Token expired");
       } else {
-        console.error("Invalid token: userId is null");
+        userId = decodedToken.userId;
+        console.log("userId", userId);
+        if (userId) {
+          isLoggedIn = true;
+        } else {
+          console.error("Invalid token: userId is null");
+        }
       }
     } catch (error) {
       console.error("Invalid token:", error);
+      localStorage.removeItem("token");
     }
   }
 
@@ -36,12 +44,10 @@ export default createStore({
       state.isLoggedIn = value;
     },
     setSelectedDreamId(state, value) {
-      // Save to localStorage
       localStorage.setItem("selectedDreamId", value);
       state.selectedDreamId = value;
     },
     setUserId(state, value) {
-      // Add this mutation
       state.userId = value;
     },
   },
